@@ -15,7 +15,10 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 
-public class RegisterController {
+public class RegisterController implements javafx.fxml.Initializable {
+
+    @FXML
+    private javafx.scene.layout.VBox registerCard;
 
     @FXML
     private TextField usernameField;
@@ -28,6 +31,24 @@ public class RegisterController {
 
     @FXML
     private Label statusLabel;
+    @Override
+    public void initialize(java.net.URL location, java.util.ResourceBundle resources) {
+        // Animate the register card
+        registerCard.setOpacity(0);
+        registerCard.setTranslateY(40);
+
+        javafx.animation.FadeTransition fade = new javafx.animation.FadeTransition(javafx.util.Duration.seconds(1), registerCard);
+        fade.setFromValue(0);
+        fade.setToValue(1);
+
+        javafx.animation.TranslateTransition slide = new javafx.animation.TranslateTransition(javafx.util.Duration.seconds(1), registerCard);
+        slide.setFromY(40);
+        slide.setToY(0);
+
+        fade.play();
+        slide.play();
+    }
+
 
     @FXML
     public void onRegisterButtonClick(ActionEvent event) {

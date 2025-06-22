@@ -2,9 +2,16 @@ package com.example.mychess;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -70,32 +77,77 @@ public class DashboardController {
     private void onSendRequestClick() {
         String selectedPlayer = playersListView.getSelectionModel().getSelectedItem();
         if (selectedPlayer == null) {
-            Alert alert = new Alert(Alert.AlertType.WARNING, "Please select a player to challenge.");
-            alert.show();
+            new Alert(Alert.AlertType.WARNING, "Please select a player to challenge.").show();
             return;
         }
 
         try (Connection conn = DBUtil.getConnection()) {
-            // Get receiver ID
             String query = "SELECT id FROM players WHERE username = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(query)) {
-                stmt.setString(1, selectedPlayer);
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) {
-                    int receiverId = rs.getInt("id");
+            PreparedStatement stmt = conn.prepareStatement(query);
+            stmt.setString(1, selectedPlayer);
+            ResultSet rs = stmt.executeQuery();
 
-                    String insert = "INSERT INTO game_requests (sender_id, receiver_id) VALUES (?, ?)";
-                    try (PreparedStatement ins = conn.prepareStatement(insert)) {
-                        ins.setInt(1, loggedInUserId);
-                        ins.setInt(2, receiverId);
-                        ins.executeUpdate();
-                        new Alert(Alert.AlertType.INFORMATION, "Game request sent to " + selectedPlayer).show();
-                    }
-                }
+            if (rs.next()) {
+                int receiverId = rs.getInt("id");
+
+                // Insert game request
+                String insert = "INSERT INTO game_requests (sender_id, receiver_id) VALUES (?, ?)";
+                PreparedStatement ins = conn.prepareStatement(insert);
+                ins.setInt(1, loggedInUserId);
+                ins.setInt(2, receiverId);
+                ins.executeUpdate();
+
+                // Directly launch game for testing/demo purpose
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/game_view.fxml"));
+                Parent root = loader.load();
+                GameController controller = loader.getController();
+                controller.setPlayers(loggedInUsername, selectedPlayer);
+
+                Stage stage = (Stage) playersListView.getScene().getWindow();
+                stage.setScene(new Scene(root, 800, 600));
+                stage.setTitle("Chess Game");
+                stage.show();
+
             }
         } catch (Exception e) {
             e.printStackTrace();
             new Alert(Alert.AlertType.ERROR, "Failed to send request.").show();
         }
     }
+
+    @FXML
+    private void onBackToLoginClick(javafx.event.ActionEvent event) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/login.fxml"));
+            Parent root = loader.load();
+            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+            stage.setScene(new Scene(root));
+            stage.setTitle("Login");
+            stage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void onPlayWithMyselfClick(javafx.event.ActionEvent event) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/game_view.fxml"));
+            Parent root = loader.load();
+
+            // Optional: Pass the player’s name to the GameController if needed
+            GameController controller = loader.getController();
+            controller.setPlayerNames(loggedInUsername, loggedInUsername); // Same user on both sides
+
+            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+            stage.setScene(new Scene(root));
+            stage.setTitle("Chess - Play With Myself");
+            stage.setResizable(true);
+            stage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+            new Alert(Alert.AlertType.ERROR, "Failed to start game.").show();
+        }
+    }
+
 }

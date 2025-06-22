@@ -16,7 +16,41 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
-public class LoginController {
+import javafx.animation.FadeTransition;
+import javafx.animation.TranslateTransition;
+import javafx.fxml.Initializable;
+import javafx.scene.layout.VBox;
+import javafx.util.Duration;
+
+import java.net.URL;
+import java.util.ResourceBundle;
+
+
+public class LoginController implements Initializable {
+    @FXML
+    private VBox loginCard;
+
+    @Override
+    public void initialize(URL url, ResourceBundle resourceBundle) {
+        // Start with invisible & moved down
+        loginCard.setOpacity(0);
+        loginCard.setTranslateY(40);
+
+        // Fade in
+        FadeTransition fadeIn = new FadeTransition(Duration.seconds(1), loginCard);
+        fadeIn.setFromValue(0);
+        fadeIn.setToValue(1);
+
+        // Slide up
+        TranslateTransition slideIn = new TranslateTransition(Duration.seconds(1), loginCard);
+        slideIn.setFromY(40);
+        slideIn.setToY(0);
+
+        // Play both
+        fadeIn.play();
+        slideIn.play();
+    }
+
 
     @FXML
     private TextField usernameField;

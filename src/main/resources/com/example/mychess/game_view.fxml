@@ -5,22 +5,26 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/23.0.1" fx:controller="com.example.mychess.GameController">
+<BorderPane xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.mychess.GameController">
+
+    <!-- Top Title -->
     <top>
-        <Label style="-fx-font-size: 24px; -fx-font-weight: bold;" text="MyChess" BorderPane.alignment="CENTER" />
+        <Label style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-padding: 20; -fx-alignment: center;" text="♟ MyChess Game ♟" BorderPane.alignment="CENTER" />
     </top>
 
-    <center>
-        <GridPane fx:id="chessBoard" alignment="CENTER" gridLinesVisible="true" style="-fx-border-color: black;" BorderPane.alignment="CENTER">
-
-        </GridPane>
-    </center>
-
+    <!-- Left Sidebar: Player Info -->
     <left>
-        <VBox alignment="TOP_LEFT" spacing="15" style="-fx-padding: 20;" BorderPane.alignment="CENTER">
-            <Label fx:id="whitePlayerLabel" style="-fx-font-size: 16px;" text="White: 01:00" />
-            <Label fx:id="blackPlayerLabel" style="-fx-font-size: 16px;" text="Black: 01:00" />
-            <Label fx:id="playerTurnLabel" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="Black's turn" />
+        <VBox alignment="TOP_LEFT" spacing="20" style="-fx-padding: 30;" BorderPane.alignment="CENTER">
+            <Label fx:id="whitePlayerLabel" style="-fx-font-size: 16px; -fx-text-fill: #34495e;" text="White: 01:00" />
+            <Label fx:id="blackPlayerLabel" style="-fx-font-size: 16px; -fx-text-fill: #34495e;" text="Black: 01:00" />
+            <Label fx:id="playerTurnLabel" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="White's turn" />
         </VBox>
     </left>
+
+    <!-- Center: Chess Board -->
+    <center>
+        <GridPane fx:id="chessBoard" alignment="CENTER" gridLinesVisible="true" prefHeight="122.0" prefWidth="138.0" style="-fx-border-color: black; -fx-padding: 10;" BorderPane.alignment="CENTER" />
+
+    </center>
+
 </BorderPane>

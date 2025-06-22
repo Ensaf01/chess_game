@@ -15,10 +15,19 @@
     <center>
         <VBox alignment="CENTER" spacing="10">
             <Label fx:id="statsLabel" />
-            <Label text="Other Players:" textFill="#16dc0f" />
+            <Label text="Other Players list:" textFill="#16dc0f" />
             <ListView fx:id="playersListView" prefHeight="200" prefWidth="0.0" />
             <Button onAction="#onSendRequestClick" text="Send Game Request" textFill="#1840ed" />
+            <Button onAction="#onPlayWithMyselfClick" text="Play with Myself" style="-fx-background-color: #2ecc71; -fx-text-fill: white;" />
+
         </VBox>
     </center>
+
+    <bottom>
+        <VBox alignment="CENTER" spacing="10" style="-fx-padding: 10;">
+            <Button text="⬅ Back to Login" onAction="#onBackToLoginClick" style="-fx-background-color: #eeeeee; -fx-text-fill: #333;" />
+        </VBox>
+    </bottom>
+
 
 </BorderPane>

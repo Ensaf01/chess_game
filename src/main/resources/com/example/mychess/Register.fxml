@@ -12,8 +12,9 @@
            xmlns="http://javafx.com/javafx/23.0.1"
            fx:controller="com.example.mychess.RegisterController">
 
-    <VBox alignment="CENTER" maxWidth="300" spacing="20" styleClass="login-card">
-        <Label styleClass="title-label" text="♟ Register♟" />
+    <VBox fx:id="registerCard" alignment="CENTER" maxWidth="300" spacing="20" styleClass="login-card">
+
+    <Label styleClass="title-label" text="♟ Register♟" />
 
         <TextField fx:id="usernameField" promptText="Choose Username" />
         <PasswordField fx:id="passwordField" promptText="Choose Password" />

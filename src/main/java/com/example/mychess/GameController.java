@@ -702,5 +702,19 @@ public class GameController {
         }
     }
 
+    private String whitePlayer;
+    private String blackPlayer;
+    public void setPlayers(String whitePlayer, String blackPlayer) {
+        this.whitePlayer = whitePlayer;
+        this.blackPlayer = blackPlayer;
+        whitePlayerLabel.setText("White: " + whitePlayer);
+        blackPlayerLabel.setText("Black: " + blackPlayer);
+        playerTurnLabel.setText("Turn: " + whitePlayer);
+    }
+
+    public void setPlayerNames(String whitePlayer, String blackPlayer) {
+        whitePlayerLabel.setText("White: " + whitePlayer);
+        blackPlayerLabel.setText("Black: " + blackPlayer);
+    }
 
 }
