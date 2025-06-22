@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<StackPane prefHeight="602.0" prefWidth="686.0" stylesheets="@style.css" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/23.0.1" fx:controller="com.example.mychess.LoginController">
+
+    <VBox alignment="CENTER" maxWidth="537.0" prefHeight="602.0" prefWidth="537.0" spacing="20" styleClass="login-card">
+        <Label styleClass="title-label" text="♟ Chess Login ♟" />
+
+        <TextField fx:id="usernameField" promptText="Username" />
+        <PasswordField fx:id="passwordField" promptText="Password" />
+
+        <Button onAction="#onLoginButtonClick" prefHeight="34.0" prefWidth="206.0" text="Login" textAlignment="CENTER" />
+        <Button onAction="#onRegisterButtonClick" prefHeight="34.0" prefWidth="310.0" text="Register" />
+
+        <Label fx:id="statusLabel" textFill="red" />
+    </VBox>
+</StackPane>
