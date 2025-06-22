@@ -81,6 +81,7 @@ public class RegisterController {
         Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
         stage.setScene(new Scene(root));
         stage.setTitle("Login");
+
         stage.show();
     }
 }
