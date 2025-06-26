@@ -17,6 +17,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
 public class DashboardController {
+    private int whitePlayerId;
+    private int blackPlayerId;
 
     @FXML private Label welcomeLabel;
     @FXML private Label statsLabel;
@@ -25,33 +27,44 @@ public class DashboardController {
     public int loggedInUserId;
     public String loggedInUsername;
 
+    public DashboardController() throws IOException {
+    }
+
     public void initializeUser(int userId, String username) {
         this.loggedInUserId = userId;
         this.loggedInUsername = username;
         welcomeLabel.setText("Welcome, " + username + "!");
 
-        loadPlayerStats();
+        loadStats();
+        loadOtherPlayers();
+    }
+    @FXML
+    private void onRefreshPlayersClick() {
         loadOtherPlayers();
     }
 
-    private void loadPlayerStats() {
+
+
+
+    private void loadStats() {
         try (Connection conn = DBUtil.getConnection()) {
             String sql = "SELECT wins, losses, category FROM players WHERE id = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setInt(1, loggedInUserId);
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) {
-                    int wins = rs.getInt("wins");
-                    int losses = rs.getInt("losses");
-                    String category = rs.getString("category");
-                    statsLabel.setText("Wins: " + wins + ", Losses: " + losses + ", Category: " + category);
-                }
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, loggedInUserId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                int wins = rs.getInt("wins");
+                int losses = rs.getInt("losses");
+                String category = rs.getString("category");
+
+                statsLabel.setText("Wins: " + wins + " | Losses: " + losses + " | Category: " + category);
             }
         } catch (Exception e) {
             e.printStackTrace();
-            statsLabel.setText("Failed to load stats.");
         }
     }
+
 
     private void loadOtherPlayers() {
         ObservableList<String> playerList = FXCollections.observableArrayList();
@@ -101,9 +114,9 @@ public class DashboardController {
                 FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/game_view.fxml"));
                 Parent root = loader.load();
                 GameController controller = loader.getController();
-                String logedInUsername = null;
-                controller.setPlayers(logedInUsername, selectedPlayer, loggedInUserId, receiverId);
-
+                //String logedInUsername = loggedInUsername;
+                controller.setPlayers(loggedInUsername, selectedPlayer, loggedInUserId, receiverId);
+                //controller.setPlayerIds(whitePlayerId, blackPlayerId);
 
                 Stage stage = (Stage) playersListView.getScene().getWindow();
                 stage.setScene(new Scene(root, 900, 800));
@@ -139,17 +152,17 @@ public class DashboardController {
 
             GameController controller = loader.getController();
 
-            // Pass same player ID for both white and black
-            controller.setPlayers(loggedInUsername, loggedInUsername, loggedInUserId, loggedInUserId);
-
-
+            // Set white as user, black as AI
+            controller.setPlayers(loggedInUsername, "AI", loggedInUserId, -1);
+            controller.setPlayerIds(loggedInUserId, -1);
             Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
             stage.setScene(new Scene(root));
-            stage.setTitle("Play With Myself");
+            stage.setTitle("Play With AI");
             stage.show();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
 
 }

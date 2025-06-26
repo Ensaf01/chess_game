@@ -18,8 +18,10 @@ import javafx.scene.text.Text;
 import javafx.scene.control.Alert;
 import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +46,7 @@ public class GameController {
 
     private volatile boolean whiteTimerRunning = false;
     private volatile boolean blackTimerRunning = false;
+    private boolean gameEnded=false;
 
     //
     //@FXML private Label playerTurnLabel;
@@ -150,18 +153,14 @@ public class GameController {
         ChessPiece targetPiece = boardPieces[toRow][toCol];
 
         // Prevent capturing own piece or king
-        if (targetPiece != null && targetPiece.getColor() == movingPiece.getColor()) {
-            return;
-        }
-        if (targetPiece != null && targetPiece.getType() == ChessPiece.Type.KING) {
-            return; // King ke khowa jabena
-        }
+        if (targetPiece != null && targetPiece.getColor() == movingPiece.getColor()) return;
+        if (targetPiece != null && targetPiece.getType() == ChessPiece.Type.KING) return;
 
         // Move the piece
         boardPieces[toRow][toCol] = movingPiece;
         boardPieces[fromRow][fromCol] = null;
 
-        // akta movement er pore board/ui ke update korbe and new player er turn asbe
+        // Switch timers
         if (isWhiteTurn) {
             stopWhiteTimer();
             startBlackTimer();
@@ -169,29 +168,23 @@ public class GameController {
             stopBlackTimer();
             startWhiteTimer();
         }
+
         isWhiteTurn = !isWhiteTurn;
         updatePlayerTurn();
         drawBoard();
 
-
-        // king is captured tahole show win dekhabe
-        if (isKingCaptured()) {
-            ChessPiece.Color winner = movingPiece.getColor() == ChessPiece.Color.WHITE ? ChessPiece.Color.BLACK : ChessPiece.Color.WHITE;
-            showWinDialog(winner);
-        }
-
-      
-        // Switch turns (you probably already do this)
-        //isWhiteTurn = !isWhiteTurn;
-
-// turn change howar pore kaj, check for checkmate
+        // Single check for both king capture or checkmate
         ChessPiece.Color currentPlayer = isWhiteTurn ? ChessPiece.Color.WHITE : ChessPiece.Color.BLACK;
 
-        if (isKingInCheck(currentPlayer) && !hasAnyValidMove(currentPlayer)) {
-            showWinDialog(isWhiteTurn ? ChessPiece.Color.BLACK : ChessPiece.Color.WHITE); // Previous player wins
+        if (isKingCaptured() || (isKingInCheck(currentPlayer) && !hasAnyValidMove(currentPlayer))) {
+            if (gameEnded) return;
+            gameEnded = true;
+            ChessPiece.Color winner = isWhiteTurn ? ChessPiece.Color.BLACK : ChessPiece.Color.WHITE;
+            updatePlayerStats(winner);  // Update stats only once
+            showWinDialog(winner);
         }
-
     }
+
 
     private boolean isKingInCheck(ChessPiece.Color kingColor) {
         int kingRow = -1, kingCol = -1;
@@ -342,6 +335,7 @@ public class GameController {
     }
 
     private void resetGame() {
+       gameEnded=false;
         // Clear the board
         for (int row = 0; row < SIZE; row++) {
             for (int col = 0; col < SIZE; col++) {
@@ -600,81 +594,121 @@ public class GameController {
         alert.setContentText(winner + " wins!");
         alert.showAndWait();
     }*/
-   /* private int whitePlayerId;
+    private int whitePlayerId;
     private int blackPlayerId;
     public void setPlayerIds(int whiteId, int blackId) {
         this.whitePlayerId = whiteId;
         this.blackPlayerId = blackId;
-    }*/
+    }
 
-    private int whitePlayerId;
-    private int blackPlayerId;
     private void showWinDialog(ChessPiece.Color winner) {
-        String winnerName = (winner == ChessPiece.Color.WHITE) ? whitePlayer : blackPlayer;
-        int winnerId = (winner == ChessPiece.Color.WHITE) ? whitePlayerId : blackPlayerId;
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Game Over");
+        alert.setHeaderText("Game Ended");
+        alert.setContentText(
+                winner == ChessPiece.Color.WHITE ?
+                        "White wins the game!" :
+                        "Black wins the game!"
+        );
 
-        //Update win count and category
-        try (Connection conn = DBUtil.getConnection()) {
-            // Update win count
-            String updateWins = "UPDATE players SET wins = wins + 1 WHERE id = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(updateWins)) {
-                stmt.setInt(1, winnerId);
-                stmt.executeUpdate();
+        ButtonType playAgainBtn = new ButtonType("Play Again");
+        ButtonType dashboardBtn = new ButtonType("Dashboard");
+        alert.getButtonTypes().setAll(playAgainBtn, dashboardBtn);
+
+        alert.showAndWait().ifPresent(response -> {
+            if (response == playAgainBtn) {
+                resetGame(); // Your reset logic
+            } else if (response == dashboardBtn) {
+                goToDashboard();
             }
+        });
+    }
 
-            // Update category based on wins
-            String updateCategory = """
-            UPDATE players 
-            SET category = CASE 
-                WHEN wins <= 2 THEN 'C'
-                WHEN wins <= 5 THEN 'B'
-                ELSE 'A'
-            END 
-            WHERE id = ?
-        """;
-            try (PreparedStatement stmt = conn.prepareStatement(updateCategory)) {
-                stmt.setInt(1, winnerId);
-                stmt.executeUpdate();
-            }
+    private void goToDashboard() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/dashboard.fxml"));
+            Parent root = loader.load();
 
-        } catch (Exception e) {
+            DashboardController controller = loader.getController();
+            controller.initializeUser(loggedInUserId, loggedInUsername);
+
+            Stage stage = (Stage) chessBoard.getScene().getWindow();
+            stage.setScene(new Scene(root));
+            stage.setTitle("Dashboard");
+            stage.show();
+        } catch (IOException e) {
             e.printStackTrace();
         }
-
-        updatePlayerStats(winner);
-        // Show existing alert
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Game Over");
-        alert.setHeaderText("King is Blocked – No Movement");
-        alert.setContentText(winner == ChessPiece.Color.WHITE
-                ? "White Colour wins the game. Congratulations!"
-                : "Black wins the game. Congratulations!");
-
-        alert.showAndWait();
-        resetGame();
     }
+
+
+
 
     private void updatePlayerStats(ChessPiece.Color winnerColor) {
         try (Connection conn = DBUtil.getConnection()) {
             int winnerId = (winnerColor == ChessPiece.Color.WHITE) ? whitePlayerId : blackPlayerId;
             int loserId = (winnerColor == ChessPiece.Color.WHITE) ? blackPlayerId : whitePlayerId;
 
-            // Update wins
+            // Don't update if winner or loser is AI
+            if (winnerId == -1 || loserId == -1) return;
+
+            // Update win
             try (PreparedStatement winStmt = conn.prepareStatement(
                     "UPDATE players SET wins = wins + 1 WHERE id = ?")) {
                 winStmt.setInt(1, winnerId);
                 winStmt.executeUpdate();
             }
 
-            // Update losses
+            // Update loss
             try (PreparedStatement loseStmt = conn.prepareStatement(
                     "UPDATE players SET losses = losses + 1 WHERE id = ?")) {
                 loseStmt.setInt(1, loserId);
                 loseStmt.executeUpdate();
             }
 
-            // Update category
+            System.out.println("Player stats updated.");
+            System.out.println("Updating stats: Winner ID = " + winnerId + ", Loser ID = " + loserId);
 
+            // Existing logic
+            updatePlayerCategory(conn, winnerId);
+            updatePlayerCategory(conn, loserId);
+
+            // ✅ New line for ranking
+            updatePlayerRankTitles();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updatePlayerRankTitles() {
+        try (Connection conn = DBUtil.getConnection()) {
+            String sql = "SELECT id FROM players ORDER BY wins DESC";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                ResultSet rs = stmt.executeQuery();
+                int rank = 1;
+
+                while (rs.next()) {
+                    int id = rs.getInt("id");
+                    String title;
+
+                    if (rank <= 3) {
+                        title = "Pro-Gamer";
+                    } else if (rank <= 5) {
+                        title = "Advanced";
+                    } else {
+                        title = "Beginner";
+                    }
+
+                    try (PreparedStatement update = conn.prepareStatement("UPDATE players SET rank_title = ? WHERE id = ?")) {
+                        update.setString(1, title);
+                        update.setInt(2, id);
+                        update.executeUpdate();
+                    }
+
+                    rank++;
+                }
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -682,8 +716,26 @@ public class GameController {
 
 
 
+    private void updatePlayerCategory(Connection conn, int playerId) throws Exception {
+        String category;
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT wins FROM players WHERE id = ?")) {
+            stmt.setInt(1, playerId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                int wins = rs.getInt("wins");
 
+                if (wins >= 10) category = "A";
+                else if (wins >= 5) category = "B";
+                else category = "C";
 
+                try (PreparedStatement update = conn.prepareStatement("UPDATE players SET category = ? WHERE id = ?")) {
+                    update.setString(1, category);
+                    update.setInt(2, playerId);
+                    update.executeUpdate();
+                }
+            }
+        }
+    }
 
 
 
@@ -783,9 +835,11 @@ public class GameController {
     public void setPlayers(String whitePlayer, String blackPlayer, int whitePlayerId, int blackPlayerId) {
         this.whitePlayer = whitePlayer;
         this.blackPlayer = blackPlayer;
+        this.whitePlayerId = whitePlayerId;
+        this.blackPlayerId = blackPlayerId;
 
-        this.loggedInUserId = whitePlayerId; // assuming white is logged-in user
-        this.loggedInUsername = whitePlayer;
+        //this.loggedInUserId = whitePlayerId; // assuming white is logged-in user
+       // this.loggedInUsername = whitePlayer;
 
         whitePlayerLabel.setText("White: " + whitePlayer);
         blackPlayerLabel.setText("Black: " + blackPlayer);
@@ -805,21 +859,36 @@ public class GameController {
         whitePlayerLabel.setText("White: " + whitePlayer);
         blackPlayerLabel.setText("Black: " + blackPlayer);
     }
-    private void declareWinner(String winner) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Game Over");
-        alert.setHeaderText(null);
-        alert.setContentText(winner + " wins! Time is up.");
 
-        ButtonType okButton = new ButtonType("Play Again", ButtonBar.ButtonData.OK_DONE);
-        alert.getButtonTypes().setAll(okButton);
+
+    private void declareWinner(String winnerName) {
+
+        if (gameEnded) return;  // ✅ prevent double result
+        gameEnded = true;
+
+        ChessPiece.Color winnerColor = winnerName.equals("White") ? ChessPiece.Color.WHITE : ChessPiece.Color.BLACK;
+
+        updatePlayerStats(winnerColor);  // ✅ update once
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Time Up");
+        alert.setHeaderText("Time is up!");
+        alert.setContentText(winnerName + " wins due to timeout!");
+
+        ButtonType playAgainBtn = new ButtonType("Play Again");
+        ButtonType dashboardBtn = new ButtonType("Dashboard");
+        alert.getButtonTypes().setAll(playAgainBtn, dashboardBtn);
 
         alert.showAndWait().ifPresent(response -> {
-            // if (response == okButton) {
-            resetGame();
-            //}
+            if (response == playAgainBtn) {
+                resetGame();
+            } else {
+                goToDashboard();
+            }
         });
     }
+
+
 
 
     @FXML

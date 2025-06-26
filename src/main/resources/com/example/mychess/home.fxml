@@ -19,6 +19,15 @@
             <Button text="Login" prefWidth="200" onAction="#onLogin"/>
             <Button text="Register" prefWidth="200" onAction="#onRegister"/>
         </VBox>
+
+        <Label text="🏆 Top Pro-Gamers 🏆" styleClass="section-title"/>
+        <ListView fx:id="proPlayerListView"
+                  prefHeight="180" prefWidth="250"
+                  styleClass="player-list"/>
+
+
     </VBox>
+
+    //endsa
 
 </StackPane>

@@ -23,21 +23,33 @@
 
 .home-container {
     -fx-padding: 40;
-    -fx-background-color: linear-gradient(to bottom, #1f1f1f, #3d3d3d);
-    -fx-background-radius: 12;
-    -fx-border-radius: 12;
-    -fx-effect: dropshadow(gaussian, black, 10, 0.5, 0, 5);
+    -fx-background-color: linear-gradient(to bottom, #ecf0f1, #bdc3c7);
 }
 
 .home-title {
     -fx-font-size: 28px;
-    -fx-text-fill: #ffffff;
     -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
 }
 
 .home-subtitle {
     -fx-font-size: 16px;
-    -fx-text-fill: #cccccc;
+    -fx-text-fill: #34495e;
 }
 
+.section-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+    -fx-padding: 10 0 0 0;
+}
+
+.player-list {
+    -fx-font-size: 15px;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #2980b9;
+    -fx-border-radius: 6px;
+    -fx-padding: 5;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 5, 0, 0, 2);
+}
 

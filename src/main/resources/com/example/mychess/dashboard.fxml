@@ -16,16 +16,17 @@
         <VBox alignment="CENTER" spacing="10">
             <Label fx:id="statsLabel" />
             <Label text="Other Players list:" textFill="#16dc0f" />
+         <Button mnemonicParsing="false" onAction="#onRefreshPlayersClick" text="Refresh Players" />
             <ListView fx:id="playersListView" prefHeight="200" prefWidth="0.0" />
             <Button onAction="#onSendRequestClick" text="Send Game Request" textFill="#1840ed" />
-            <Button onAction="#onPlayWithMyselfClick" text="Play with Myself" style="-fx-background-color: #2ecc71; -fx-text-fill: white;" />
+            <Button onAction="#onPlayWithMyselfClick" style="-fx-background-color: #2ecc71; -fx-text-fill: white;" text="Play with Myself" />
 
         </VBox>
     </center>
 
     <bottom>
         <VBox alignment="CENTER" spacing="10" style="-fx-padding: 10;">
-            <Button text="⬅ Back to Login" onAction="#onBackToLoginClick" style="-fx-background-color: #eeeeee; -fx-text-fill: #333;" />
+            <Button onAction="#onBackToLoginClick" style="-fx-background-color: #eeeeee; -fx-text-fill: #333;" text="⬅ Back to Login" />
         </VBox>
     </bottom>
 
