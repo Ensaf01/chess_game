@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<StackPane xmlns:fx="http://javafx.com/fxml/1"
+           xmlns="http://javafx.com/javafx/20"
+           fx:controller="com.example.mychess.HomeController"
+           prefWidth="686.0" prefHeight="602.0"
+           stylesheets="@style.css">
+
+
+    <VBox alignment="CENTER" spacing="25" styleClass="home-container">
+        <Label text="♛ Welcome to MyChess ♛" styleClass="home-title"/>
+        <Label text="Play with Friends or AI" styleClass="home-subtitle"/>
+
+        <VBox spacing="15" alignment="CENTER">
+            <Button text="Login" prefWidth="200" onAction="#onLogin"/>
+            <Button text="Register" prefWidth="200" onAction="#onRegister"/>
+        </VBox>
+    </VBox>
+
+</StackPane>

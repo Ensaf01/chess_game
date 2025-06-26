@@ -1,7 +1,11 @@
 package com.example.mychess;
 
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
@@ -12,7 +16,10 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.control.Alert;
+import javafx.stage.Stage;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,9 +45,7 @@ public class GameController {
     private volatile boolean whiteTimerRunning = false;
     private volatile boolean blackTimerRunning = false;
 
-    private boolean isWhiteTurn = true;
-
-    //bbb
+    //
     //@FXML private Label playerTurnLabel;
     @FXML private GridPane chessBoard;
 
@@ -50,9 +55,9 @@ public class GameController {
     //private ChessPiece[][] board = new ChessPiece[8][8];
 
 
-    //private boolean isWhiteTurn = true;
+    private boolean isWhiteTurn = true;
     private int selectedRow = -1, selectedCol = -1;
-
+// initial setup code here
     @FXML
     public void initialize() {
         setupPieces();
@@ -73,8 +78,9 @@ public class GameController {
         Platform.runLater(() -> label.setText(playerName + ": " + timeStr));
     }
 
+    // Black pieces here
     private void setupPieces() {
-        // Black pieces
+
         boardPieces[0] = new ChessPiece[]{
                 new ChessPiece(ChessPiece.Type.ROOK, ChessPiece.Color.BLACK),
                 new ChessPiece(ChessPiece.Type.KNIGHT, ChessPiece.Color.BLACK),
@@ -90,7 +96,7 @@ public class GameController {
             boardPieces[1][i] = new ChessPiece(ChessPiece.Type.PAWN, ChessPiece.Color.BLACK);
         }
 
-        // White pieces
+        // White pieces setup here
         boardPieces[7] = new ChessPiece[]{
                 new ChessPiece(ChessPiece.Type.ROOK, ChessPiece.Color.WHITE),
                 new ChessPiece(ChessPiece.Type.KNIGHT, ChessPiece.Color.WHITE),
@@ -132,52 +138,9 @@ public class GameController {
 
         return square;
     }
-    /*private void showWinDialog(ChessPiece.Color winner) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Game Over");
-        alert.setHeaderText(null);
-        alert.setContentText(winner + " wins!");
-        alert.showAndWait();
-    }*/
-    private void showWinDialog(ChessPiece.Color winner) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Game Over");
-        alert.setHeaderText("King is Blocked – No Movement");
-        alert.setContentText( winner == ChessPiece.Color.WHITE ? "White Colour wins the game. Congratulations!" : "Black wins the game. Congratulations!"
-        );
 
-         alert.showAndWait();
-        resetGame();
-    }
 
-    private void resetGame() {
-        // Clear the board logic
-        for (int row = 0; row < SIZE; row++) {
-            for (int col = 0; col < SIZE; col++) {
-                boardPieces[row][col] = null;
 
-                // Clear UI squares
-                StackPane square = boardSquares[row][col];
-                if (square != null) {
-                    square.getChildren().removeIf(node -> node instanceof Label); // remove piece labels
-                }
-            }
-        }
-
-        // Reset game logic
-        isWhiteTurn = true;
-
-        // Setup fresh board
-        setupPieces();         // put pieces in initial position
-        updatePlayerTurn();    // update turn label
-        int whiteTimeRemaining = 1 * 60;
-       int blackTimeRemaining = 1 * 60;
-
-        stopWhiteTimer();
-        stopBlackTimer();
-
-        startWhiteTimer();
-    }
 
 
 
@@ -378,6 +341,32 @@ public class GameController {
         return true; // Opponent's king has been captured
     }
 
+    private void resetGame() {
+        // Clear the board
+        for (int row = 0; row < SIZE; row++) {
+            for (int col = 0; col < SIZE; col++) {
+                boardPieces[row][col] = null;
+
+                // Clear UI again
+                StackPane square = boardSquares[row][col];
+                if (square != null) {
+                    square.getChildren().removeIf(node -> node instanceof Label); // remove piece labels
+                }
+            }
+        }
+
+        isWhiteTurn = true;
+
+        // Setup fresh board
+        setupPieces();         // put pieces in initial position
+        updatePlayerTurn();    // update turn label
+       // int whiteTimeRemaining = 1 * 60;
+        //int blackTimeRemaining = 1 * 60;
+        stopWhiteTimer();
+        stopBlackTimer();
+        startWhiteTimer();
+    }
+
 
 
     private void handleClick(int row, int col) {
@@ -480,7 +469,7 @@ public class GameController {
             }
         }
 
-        // Bishop movement logic (diagonal movement)
+        // Bishop movement logic
         if (piece.getType() == ChessPiece.Type.BISHOP) {
             if (Math.abs(fromRow - toRow) != Math.abs(fromCol - toCol)) return false;  // Must move diagonally
             int rowStep = fromRow < toRow ? 1 : -1;
@@ -508,7 +497,7 @@ public class GameController {
                     if (boardPieces[fromRow][i] != null) return false;  // Path blocked
                 }
                 if (targetPiece != null && targetPiece.getColor() != pieceColor) {
-                    return true; // Capture
+                    return true; // Capture korle
                 }
                 return true; // Valid move if target square is empty
             } else if (fromCol == toCol) {
@@ -600,28 +589,130 @@ public class GameController {
         return false;
     }
 
+
+
+
+
+        /*private void showWinDialog(ChessPiece.Color winner) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Game Over");
+        alert.setHeaderText(null);
+        alert.setContentText(winner + " wins!");
+        alert.showAndWait();
+    }*/
+   /* private int whitePlayerId;
+    private int blackPlayerId;
+    public void setPlayerIds(int whiteId, int blackId) {
+        this.whitePlayerId = whiteId;
+        this.blackPlayerId = blackId;
+    }*/
+
+    private int whitePlayerId;
+    private int blackPlayerId;
+    private void showWinDialog(ChessPiece.Color winner) {
+        String winnerName = (winner == ChessPiece.Color.WHITE) ? whitePlayer : blackPlayer;
+        int winnerId = (winner == ChessPiece.Color.WHITE) ? whitePlayerId : blackPlayerId;
+
+        //Update win count and category
+        try (Connection conn = DBUtil.getConnection()) {
+            // Update win count
+            String updateWins = "UPDATE players SET wins = wins + 1 WHERE id = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(updateWins)) {
+                stmt.setInt(1, winnerId);
+                stmt.executeUpdate();
+            }
+
+            // Update category based on wins
+            String updateCategory = """
+            UPDATE players 
+            SET category = CASE 
+                WHEN wins <= 2 THEN 'C'
+                WHEN wins <= 5 THEN 'B'
+                ELSE 'A'
+            END 
+            WHERE id = ?
+        """;
+            try (PreparedStatement stmt = conn.prepareStatement(updateCategory)) {
+                stmt.setInt(1, winnerId);
+                stmt.executeUpdate();
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        updatePlayerStats(winner);
+        // Show existing alert
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Game Over");
+        alert.setHeaderText("King is Blocked – No Movement");
+        alert.setContentText(winner == ChessPiece.Color.WHITE
+                ? "White Colour wins the game. Congratulations!"
+                : "Black wins the game. Congratulations!");
+
+        alert.showAndWait();
+        resetGame();
+    }
+
+    private void updatePlayerStats(ChessPiece.Color winnerColor) {
+        try (Connection conn = DBUtil.getConnection()) {
+            int winnerId = (winnerColor == ChessPiece.Color.WHITE) ? whitePlayerId : blackPlayerId;
+            int loserId = (winnerColor == ChessPiece.Color.WHITE) ? blackPlayerId : whitePlayerId;
+
+            // Update wins
+            try (PreparedStatement winStmt = conn.prepareStatement(
+                    "UPDATE players SET wins = wins + 1 WHERE id = ?")) {
+                winStmt.setInt(1, winnerId);
+                winStmt.executeUpdate();
+            }
+
+            // Update losses
+            try (PreparedStatement loseStmt = conn.prepareStatement(
+                    "UPDATE players SET losses = losses + 1 WHERE id = ?")) {
+                loseStmt.setInt(1, loserId);
+                loseStmt.executeUpdate();
+            }
+
+            // Update category
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
+
+
+
+
+
+//thread
+
+
+
     private void updatePlayerTurn() {
         if (playerTurnLabel != null) {
-            if (isWhiteTurn) {
-                playerTurnLabel.setText("White's Turn");
-                stopBlackTimer();
-                blackTime = INITIAL_TIME; // reset black timer
+            String currentPlayerName = isWhiteTurn ? whitePlayer : blackPlayer;
+            playerTurnLabel.setText((isWhiteTurn ? "White" : "Black") + "'s Turn (" + currentPlayerName + ")");
 
-                whiteTime = INITIAL_TIME; // reset white timer
+            if (isWhiteTurn) {
+                stopBlackTimer();
+                blackTime = INITIAL_TIME;
+                whiteTime = INITIAL_TIME;
                 startWhiteTimer();
             } else {
-                playerTurnLabel.setText("Black's Turn");
                 stopWhiteTimer();
-                whiteTime = INITIAL_TIME; // reset white timer
-
-                blackTime = INITIAL_TIME; // reset black timer
+                whiteTime = INITIAL_TIME;
+                blackTime = INITIAL_TIME;
                 startBlackTimer();
             }
-        }
-        updateTimerLabel(whitePlayerLabel, whiteTime, "White");
-        updateTimerLabel(blackPlayerLabel, blackTime, "Black");
 
+            updateTimerLabel(whitePlayerLabel, whiteTime, "White");
+            updateTimerLabel(blackPlayerLabel, blackTime, "Black");
+        }
     }
+
 
     private void startWhiteTimer() {
         stopWhiteTimer(); // Stop previous thread jodi thake
@@ -645,25 +736,6 @@ public class GameController {
         whiteTimer.setDaemon(true);
         whiteTimer.start();
     }
-
-    private void declareWinner(String winner) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Game Over");
-        alert.setHeaderText(null);
-        alert.setContentText(winner + " wins! Time is up.");
-
-        ButtonType okButton = new ButtonType("Play Again", ButtonBar.ButtonData.OK_DONE);
-        alert.getButtonTypes().setAll(okButton);
-
-        alert.showAndWait().ifPresent(response -> {
-           // if (response == okButton) {
-                resetGame();
-            //}
-        });
-    }
-
-
-
 
     private void startBlackTimer() {
         stopBlackTimer(); // Stop previous thread if running
@@ -704,17 +776,82 @@ public class GameController {
 
     private String whitePlayer;
     private String blackPlayer;
-    public void setPlayers(String whitePlayer, String blackPlayer) {
+
+    private int loggedInUserId;      // For returning to dashboard
+    private String loggedInUsername;
+
+    public void setPlayers(String whitePlayer, String blackPlayer, int whitePlayerId, int blackPlayerId) {
         this.whitePlayer = whitePlayer;
         this.blackPlayer = blackPlayer;
+
+        this.loggedInUserId = whitePlayerId; // assuming white is logged-in user
+        this.loggedInUsername = whitePlayer;
+
         whitePlayerLabel.setText("White: " + whitePlayer);
         blackPlayerLabel.setText("Black: " + blackPlayer);
-        playerTurnLabel.setText("Turn: " + whitePlayer);
+
+        updateTurnLabel();
+    }
+
+    private void updateTurnLabel() {
+        if (isWhiteTurn) {
+            playerTurnLabel.setText("Turn: White (" + whitePlayer + ")");
+        } else {
+            playerTurnLabel.setText("Turn: Black (" + blackPlayer + ")");
+        }
     }
 
     public void setPlayerNames(String whitePlayer, String blackPlayer) {
         whitePlayerLabel.setText("White: " + whitePlayer);
         blackPlayerLabel.setText("Black: " + blackPlayer);
     }
+    private void declareWinner(String winner) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Game Over");
+        alert.setHeaderText(null);
+        alert.setContentText(winner + " wins! Time is up.");
 
+        ButtonType okButton = new ButtonType("Play Again", ButtonBar.ButtonData.OK_DONE);
+        alert.getButtonTypes().setAll(okButton);
+
+        alert.showAndWait().ifPresent(response -> {
+            // if (response == okButton) {
+            resetGame();
+            //}
+        });
+    }
+
+
+    @FXML
+    private void onHomeButtonClick() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/home.fxml"));
+            Parent root = loader.load();
+            Stage stage = (Stage) chessBoard.getScene().getWindow();
+            stage.setScene(new Scene(root));
+            stage.setTitle("Home");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void onDashboardButtonClick() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/dashboard.fxml"));
+            Parent root = loader.load();
+            DashboardController controller = loader.getController();
+            controller.initializeUser(loggedInUserId, loggedInUsername);
+            Stage stage = (Stage) chessBoard.getScene().getWindow();
+            stage.setScene(new Scene(root));
+            stage.setTitle("Player Dashboard");
+            stage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+   // public void onStopgame(ActionEvent actionEvent) {
+
+    //}
 }

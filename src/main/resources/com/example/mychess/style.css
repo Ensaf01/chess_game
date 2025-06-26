@@ -19,3 +19,25 @@
     -fx-padding: 8 16 8 16;
     -fx-border-radius: 5;
 }
+
+
+.home-container {
+    -fx-padding: 40;
+    -fx-background-color: linear-gradient(to bottom, #1f1f1f, #3d3d3d);
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-effect: dropshadow(gaussian, black, 10, 0.5, 0, 5);
+}
+
+.home-title {
+    -fx-font-size: 28px;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+}
+
+.home-subtitle {
+    -fx-font-size: 16px;
+    -fx-text-fill: #cccccc;
+}
+
+

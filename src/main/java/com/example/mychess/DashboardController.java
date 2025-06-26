@@ -22,8 +22,8 @@ public class DashboardController {
     @FXML private Label statsLabel;
     @FXML private ListView<String> playersListView;
 
-    private int loggedInUserId;
-    private String loggedInUsername;
+    public int loggedInUserId;
+    public String loggedInUsername;
 
     public void initializeUser(int userId, String username) {
         this.loggedInUserId = userId;
@@ -101,10 +101,12 @@ public class DashboardController {
                 FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/game_view.fxml"));
                 Parent root = loader.load();
                 GameController controller = loader.getController();
-                controller.setPlayers(loggedInUsername, selectedPlayer);
+                String logedInUsername = null;
+                controller.setPlayers(logedInUsername, selectedPlayer, loggedInUserId, receiverId);
+
 
                 Stage stage = (Stage) playersListView.getScene().getWindow();
-                stage.setScene(new Scene(root, 800, 600));
+                stage.setScene(new Scene(root, 900, 800));
                 stage.setTitle("Chess Game");
                 stage.show();
 
@@ -116,7 +118,7 @@ public class DashboardController {
     }
 
     @FXML
-    private void onBackToLoginClick(javafx.event.ActionEvent event) {
+    private void onBackToLoginClick(ActionEvent event) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/login.fxml"));
             Parent root = loader.load();
@@ -130,23 +132,23 @@ public class DashboardController {
     }
 
     @FXML
-    private void onPlayWithMyselfClick(javafx.event.ActionEvent event) {
+    private void onPlayWithMyselfClick(ActionEvent event) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/game_view.fxml"));
             Parent root = loader.load();
 
-            // Optional: Pass the player’s name to the GameController if needed
             GameController controller = loader.getController();
-            controller.setPlayerNames(loggedInUsername, loggedInUsername); // Same user on both sides
+
+            // Pass same player ID for both white and black
+            controller.setPlayers(loggedInUsername, loggedInUsername, loggedInUserId, loggedInUserId);
+
 
             Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
             stage.setScene(new Scene(root));
-            stage.setTitle("Chess - Play With Myself");
-            stage.setResizable(true);
+            stage.setTitle("Play With Myself");
             stage.show();
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
-            new Alert(Alert.AlertType.ERROR, "Failed to start game.").show();
         }
     }
 

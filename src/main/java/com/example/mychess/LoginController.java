@@ -112,4 +112,16 @@ public class LoginController implements Initializable {
         stage.setTitle("Register");
         stage.show();
     }
+
+    @FXML
+    public void onBackToHomeClick(ActionEvent event) throws IOException {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/home.fxml"));
+        Parent root = loader.load();
+
+        Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+        stage.setScene(new Scene(root));
+        stage.setTitle("Home");
+        stage.show();
+    }
+
 }

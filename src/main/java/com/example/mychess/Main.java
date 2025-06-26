@@ -8,11 +8,11 @@ import javafx.stage.Stage;
 public class Main extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/login.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/home.fxml"));
         Scene scene = new Scene(loader.load());
-        primaryStage.setTitle("Chess Login");
+        primaryStage.setTitle("Welcome to MyChess");
         primaryStage.setScene(scene);
-        primaryStage.setResizable(false); // Optional
+        primaryStage.setResizable(false); // You can set true if you want resizable
         primaryStage.show();
     }
 

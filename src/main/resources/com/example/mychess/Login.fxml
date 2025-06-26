@@ -38,6 +38,10 @@
                 onAction="#onRegisterButtonClick"
                 style="-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold; -fx-pref-width: 200px;"/>
 
+        <Button text="Back to Home"
+                onAction="#onBackToHomeClick"
+                style="-fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold; -fx-pref-width: 200px;" />
+
         <Label fx:id="statusLabel"
                textFill="red"
                style="-fx-font-size: 13px;" />
