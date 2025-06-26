@@ -1,12 +1,10 @@
 package com.example.mychess;
 
 import javafx.application.Platform;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
@@ -22,12 +20,12 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.List;
 
 
 public class GameController {
+    private String opponentUsername;
     private static final int INITIAL_TIME = 60;//(1min)
     @FXML
     private Label whitePlayerLabel;
@@ -47,6 +45,8 @@ public class GameController {
     private volatile boolean whiteTimerRunning = false;
     private volatile boolean blackTimerRunning = false;
     private boolean gameEnded=false;
+    private boolean sendMove=false;
+    
 
     //
     //@FXML private Label playerTurnLabel;
@@ -74,12 +74,7 @@ public class GameController {
 
     }
 
-    private void updateTimerLabel(Label label, int timeLeft, String playerName) {
-        int minutes = timeLeft / 60;
-        int seconds = timeLeft % 60;
-        String timeStr = String.format("%02d:%02d", minutes, seconds);
-        Platform.runLater(() -> label.setText(playerName + ": " + timeStr));
-    }
+
 
     // Black pieces here
     private void setupPieces() {
@@ -148,7 +143,7 @@ public class GameController {
 
 
 
-    private void movePiece(int fromRow, int fromCol, int toRow, int toCol) {
+    private void movePiece(int fromRow, int fromCol, int toRow, int toCol, boolean b) {
         ChessPiece movingPiece = boardPieces[fromRow][fromCol];
         ChessPiece targetPiece = boardPieces[toRow][toCol];
 
@@ -173,6 +168,10 @@ public class GameController {
         updatePlayerTurn();
         drawBoard();
 
+        if (sendMove) {
+            sendMoveToOpponent(fromRow, fromCol, toRow, toCol);
+        }
+
         // Single check for both king capture or checkmate
         ChessPiece.Color currentPlayer = isWhiteTurn ? ChessPiece.Color.WHITE : ChessPiece.Color.BLACK;
 
@@ -183,7 +182,15 @@ public class GameController {
             updatePlayerStats(winner);  // Update stats only once
             showWinDialog(winner);
         }
+        
     }
+
+    /*private void sendMoveToOpponent(int fromRow, int fromCol, int toRow, int toCol) {
+        if (socketClient != null) {
+            socketClient.sendMessage("MOVE:" + fromRow + "," + fromCol + "," + toRow + "," + toCol);
+        }
+    }*/
+
 
 
     private boolean isKingInCheck(ChessPiece.Color kingColor) {
@@ -375,7 +382,7 @@ public class GameController {
         // Try to move the selected piece
         else if (selectedRow != -1) {
             if (isValidMove(selectedRow, selectedCol, row, col)) {
-                movePiece(selectedRow, selectedCol, row, col);
+                movePiece(selectedRow, selectedCol, row, col, false);
             }
             // Clear selection
             boardSquares[selectedRow][selectedCol].setStyle("");
@@ -766,14 +773,22 @@ public class GameController {
     }
 
 
+
+
+    private void updateTimerLabel(Label label, int timeLeft, String playerName) {
+        int minutes = timeLeft / 60;
+        int seconds = timeLeft % 60;
+        String timeStr = String.format("%02d:%02d", minutes, seconds);
+        Platform.runLater(() -> label.setText(playerName + ": " + timeStr));
+    }
+
     private void startWhiteTimer() {
-        stopWhiteTimer(); // Stop previous thread jodi thake
-        final int[] whiteTimeRemaining = {1 * 60}; // Reset to 5 mins
-        Thread whiteTimer = new Thread(() -> {
+        stopWhiteTimer();  // Stop previous if running
+        final int[] whiteTimeRemaining = {1 * 60}; // example: 5 minutes
+
+        whiteTimerThread = new Thread(() -> {
             while (whiteTimeRemaining[0] > 0 && isWhiteTurn) {
-                int minutes = whiteTimeRemaining[0] / 60;
-                int seconds = whiteTimeRemaining[0] % 60;
-                Platform.runLater(() -> whitePlayerLabel.setText("White: " + String.format("%02d:%02d", minutes, seconds)));
+                updateTimerLabel(whitePlayerLabel, whiteTimeRemaining[0], "White");
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
@@ -782,46 +797,45 @@ public class GameController {
                 whiteTimeRemaining[0]--;
             }
             if (whiteTimeRemaining[0] == 0) {
-                Platform.runLater(() -> declareWinner("Black"));
+                Platform.runLater(() -> declareWinner("Black"));  // White timed out => Black wins
             }
         });
-        whiteTimer.setDaemon(true);
-        whiteTimer.start();
+        whiteTimerThread.setDaemon(true);
+        whiteTimerThread.start();
     }
 
     private void startBlackTimer() {
-        stopBlackTimer(); // Stop previous thread if running
-        final int[] blackTimeRemaining = {1 * 60}; // Reset to 5 minutes
-        Thread blackTimer = new Thread(() -> {
+        stopBlackTimer();  // Stop previous if running
+        final int[] blackTimeRemaining = {1 * 60}; // example: 5 minutes
+
+        blackTimerThread = new Thread(() -> {
             while (blackTimeRemaining[0] > 0 && !isWhiteTurn) {
-                int minutes = blackTimeRemaining[0] / 60;
-                int seconds = blackTimeRemaining[0] % 60;
-                Platform.runLater(() -> blackPlayerLabel.setText("Black: " + String.format("%02d:%02d", minutes, seconds)));
+                updateTimerLabel(blackPlayerLabel, blackTimeRemaining[0], "Black");
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
-                    return;
+                    return; // Timer stopped externally
                 }
                 blackTimeRemaining[0]--;
             }
             if (blackTimeRemaining[0] == 0) {
-                Platform.runLater(() -> declareWinner("White"));
+                Platform.runLater(() -> declareWinner("White"));  // Black timed out => White wins
             }
         });
-        blackTimer.setDaemon(true);
-        blackTimer.start();
+        blackTimerThread.setDaemon(true);
+        blackTimerThread.start();
     }
 
-
     private void stopWhiteTimer() {
-        whiteTimerRunning = false;
-        if (whiteTimerThread != null) {
+        whiteTimerRunning=false;
+        if (whiteTimerThread != null && whiteTimerThread.isAlive()) {
             whiteTimerThread.interrupt();
         }
     }
+
     private void stopBlackTimer() {
-        blackTimerRunning = false;
-        if (blackTimerThread != null) {
+        blackTimerRunning=false;
+        if (blackTimerThread != null && blackTimerThread.isAlive()) {
             blackTimerThread.interrupt();
         }
     }
@@ -920,7 +934,88 @@ public class GameController {
         }
     }
 
-   // public void onStopgame(ActionEvent actionEvent) {
+    private com.example.mychess.SocketClient socketClient;
+
+    public void setSocketClient(SocketClient socketClient) {
+        this.socketClient = socketClient;
+
+        socketClient.listener = new SocketClient.MessageListener() {
+            @Override
+            public void onChallengeReceived(String fromUser) {
+                // Not needed here in game screen
+            }
+
+            @Override
+            public void onChallengeResponse(String fromUser, String response) {
+                // Not needed here in game screen
+            }
+
+            @Override
+            public void onMoveReceived(String fromUser, String moveData) {
+                if (fromUser.equals(opponentUsername)) {
+                    Platform.runLater(() -> processOpponentMove(moveData));
+                }
+            }
+        };
+    }
+
+    private void processOpponentMove(String moveData) {
+        // Example moveData format: "fromRow,fromCol,toRow,toCol"
+        String[] parts = moveData.split(",");
+        if (parts.length != 4) {
+            System.err.println("Invalid move data: " + moveData);
+            return;
+        }
+        try {
+            int fromRow = Integer.parseInt(parts[0]);
+            int fromCol = Integer.parseInt(parts[1]);
+            int toRow = Integer.parseInt(parts[2]);
+            int toCol = Integer.parseInt(parts[3]);
+
+            // Now apply this move to your game board
+            // For example, call your existing move logic method:
+            makeMove(fromRow, fromCol, toRow, toCol);
+
+        } catch (NumberFormatException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void makeMove(int fromRow, int fromCol, int toRow, int toCol) {
+        // Your existing logic to update board state locally
+        // e.g., update piece positions, redraw UI, etc.
+    }
+
+
+
+    private void sendMoveToOpponent(int fromRow, int fromCol, int toRow, int toCol) {
+        if (socketClient != null && opponentUsername != null) {
+            String moveStr = fromRow + "," + fromCol + "," + toRow + "," + toCol;
+            socketClient.sendMessage("MOVE:" + loggedInUsername + ":" + opponentUsername + ":" + moveStr);
+        }
+    }
+
+
+    private void handleSocketMessage(String message) {
+        Platform.runLater(() -> {
+            if (message.startsWith("MOVE:")) {
+                // Example MOVE message: MOVE:fromRow,fromCol,toRow,toCol
+                String moveData = message.substring("MOVE:".length());
+                String[] parts = moveData.split(",");
+                int fromRow = Integer.parseInt(parts[0]);
+                int fromCol = Integer.parseInt(parts[1]);
+                int toRow = Integer.parseInt(parts[2]);
+                int toCol = Integer.parseInt(parts[3]);
+
+                // Apply opponent's move on the board, do not resend this move
+                movePiece(fromRow, fromCol, toRow, toCol, false);
+            }
+        });
+    }
+
+
+
+    // public void onStopgame(ActionEvent actionEvent) {
 
     //}
 }

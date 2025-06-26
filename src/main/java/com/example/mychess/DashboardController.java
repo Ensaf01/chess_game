@@ -16,7 +16,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
+import javafx.application.Platform;
+
+
+
 public class DashboardController {
+    private SocketClient socketClient;
     private int whitePlayerId;
     private int blackPlayerId;
 
@@ -29,7 +34,6 @@ public class DashboardController {
 
     public DashboardController() throws IOException {
     }
-
     public void initializeUser(int userId, String username) {
         this.loggedInUserId = userId;
         this.loggedInUsername = username;
@@ -37,13 +41,126 @@ public class DashboardController {
 
         loadStats();
         loadOtherPlayers();
+
+        new Thread(() -> {
+            try {
+                socketClient = new SocketClient("localhost", 5555, username, new SocketClient.MessageListener() {
+                    @Override
+                    public void onChallengeReceived(String fromUser) {
+                        Platform.runLater(() -> showChallengeDialog(fromUser));
+                    }
+
+                    @Override
+                    public void onChallengeResponse(String fromUser, String response) {
+                        Platform.runLater(() -> {
+                            if ("ACCEPT".equalsIgnoreCase(response)) {
+                                openGameWindow(loggedInUsername, fromUser);
+                            } else {
+                                new Alert(Alert.AlertType.INFORMATION, fromUser + " declined your challenge.").show();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onMoveReceived(String fromUser, String moveData) {
+                        // You can handle game moves in GameController
+                    }
+                });
+                System.out.println("[Dashboard] Connected to socket server");
+            } catch (IOException e) {
+                e.printStackTrace();
+                Platform.runLater(() -> new Alert(Alert.AlertType.ERROR, "Failed to connect to server").show());
+            }
+        }).start();
     }
+
     @FXML
     private void onRefreshPlayersClick() {
         loadOtherPlayers();
     }
 
 
+
+//new
+
+
+    private void handleIncomingMessage(String message) {
+        // Runs in background thread, update UI on FX thread
+        Platform.runLater(() -> {
+            System.out.println("[Dashboard] Message received: " + message);
+            // Example message formats:
+            // CHALLENGE_REQUEST:<challengerUsername>
+            // CHALLENGE_ACCEPTED:<accepterUsername>
+            // CHALLENGE_DECLINED:<declinerUsername>
+
+            if (message.startsWith("CHALLENGE_REQUEST:")) {
+                String challenger = message.substring("CHALLENGE_REQUEST:".length());
+                showChallengeDialog(challenger);
+
+            } else if (message.startsWith("CHALLENGE_ACCEPTED:")) {
+                String accepter = message.substring("CHALLENGE_ACCEPTED:".length());
+                if (accepter.equals(playersListView.getSelectionModel().getSelectedItem())) {
+                    openGameWindow(loggedInUsername, accepter);
+                }
+
+            } else if (message.startsWith("CHALLENGE_DECLINED:")) {
+                String decliner = message.substring("CHALLENGE_DECLINED:".length());
+                new Alert(Alert.AlertType.INFORMATION, decliner + " declined your challenge.").show();
+            }
+        });
+    }
+
+    private void showChallengeDialog(String challenger) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Game Challenge");
+        alert.setHeaderText(null);
+        alert.setContentText(challenger + " has challenged you to a game. Accept?");
+
+        ButtonType acceptButton = new ButtonType("Accept");
+        ButtonType declineButton = new ButtonType("Decline");
+        alert.getButtonTypes().setAll(acceptButton, declineButton);
+
+        alert.showAndWait().ifPresent(response -> {
+            if (response == acceptButton) {
+                socketClient.sendMessage("CHALLENGE_ACCEPTED:" + challenger);
+                openGameWindow(challenger, loggedInUsername); // challenger is white, you black
+            } else {
+                socketClient.sendMessage("CHALLENGE_DECLINED:" + challenger);
+            }
+        });
+    }
+
+    private void openGameWindow(String whitePlayer, String blackPlayer) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/game_view.fxml"));
+            Parent root = loader.load();
+            GameController controller = loader.getController();
+
+            controller.setPlayers(whitePlayer, blackPlayer, -1, -1);
+            controller.setSocketClient(socketClient);
+
+            Stage stage = new Stage();
+            stage.setScene(new Scene(root, 900, 800));
+            stage.setTitle("Chess Game: " + whitePlayer + " vs " + blackPlayer);
+            stage.show();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+    //new
 
 
     private void loadStats() {
@@ -88,10 +205,15 @@ public class DashboardController {
 
     @FXML
     private void onSendRequestClick() {
+
         String selectedPlayer = playersListView.getSelectionModel().getSelectedItem();
         if (selectedPlayer == null) {
             new Alert(Alert.AlertType.WARNING, "Please select a player to challenge.").show();
             return;
+        }
+        if (socketClient != null) {
+            socketClient.sendMessage("CHALLENGE:" + loggedInUsername + ":" + selectedPlayer);
+            new Alert(Alert.AlertType.INFORMATION, "Challenge sent to " + selectedPlayer).show();
         }
 
         try (Connection conn = DBUtil.getConnection()) {
