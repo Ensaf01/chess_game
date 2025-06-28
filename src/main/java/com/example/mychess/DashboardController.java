@@ -65,6 +65,11 @@ public class DashboardController {
                     public void onMoveReceived(String fromUser, String moveData) {
                         // You can handle game moves in GameController
                     }
+
+                    @Override
+                    public void accept(String moveData) {
+
+                    }
                 });
                 System.out.println("[Dashboard] Connected to socket server");
             } catch (IOException e) {
@@ -233,17 +238,17 @@ public class DashboardController {
                 ins.executeUpdate();
 
                 // Directly launch game for testing/demo purpose
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/game_view.fxml"));
-                Parent root = loader.load();
-                GameController controller = loader.getController();
+               // FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/game_view.fxml"));
+               // Parent root = loader.load();
+               // GameController controller = loader.getController();
                 //String logedInUsername = loggedInUsername;
-                controller.setPlayers(loggedInUsername, selectedPlayer, loggedInUserId, receiverId);
+                //controller.setPlayers(loggedInUsername, selectedPlayer, loggedInUserId, receiverId);
                 //controller.setPlayerIds(whitePlayerId, blackPlayerId);
 
-                Stage stage = (Stage) playersListView.getScene().getWindow();
-                stage.setScene(new Scene(root, 900, 800));
-                stage.setTitle("Chess Game");
-                stage.show();
+                //Stage stage = (Stage) playersListView.getScene().getWindow();
+               // stage.setScene(new Scene(root, 900, 800));
+               // stage.setTitle("Chess Game");
+                //stage.show();
 
             }
         } catch (Exception e) {

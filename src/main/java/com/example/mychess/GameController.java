@@ -46,7 +46,7 @@ public class GameController {
     private volatile boolean blackTimerRunning = false;
     private boolean gameEnded=false;
     private boolean sendMove=false;
-    
+
 
     //
     //@FXML private Label playerTurnLabel;
@@ -60,7 +60,7 @@ public class GameController {
 
     private boolean isWhiteTurn = true;
     private int selectedRow = -1, selectedCol = -1;
-// initial setup code here
+    // initial setup code here
     @FXML
     public void initialize() {
         setupPieces();
@@ -74,6 +74,11 @@ public class GameController {
 
     }
 
+    private java.util.function.Consumer<String> moveListener;
+
+    public void setGameMoveListener(java.util.function.Consumer<String> listener) {
+        this.moveListener = listener;
+    }
 
 
     // Black pieces here
@@ -107,7 +112,7 @@ public class GameController {
         };
         for (int i = 0; i < SIZE; i++)
         {boardPieces[6][i] = new ChessPiece(ChessPiece.Type.PAWN, ChessPiece.Color.WHITE);
-            }
+        }
     }
 
     private void drawBoard() {
@@ -182,7 +187,7 @@ public class GameController {
             updatePlayerStats(winner);  // Update stats only once
             showWinDialog(winner);
         }
-        
+
     }
 
     /*private void sendMoveToOpponent(int fromRow, int fromCol, int toRow, int toCol) {
@@ -300,13 +305,13 @@ public class GameController {
         return moves;
     }
 
-   /* private void addSlidingMoves(List<int[]> moves, int row, int col, ChessPiece.Color color, int[][] ints) {
-    }*/
-   private boolean isInBounds(int row, int col) {
-       return row >= 0 && row < SIZE && col >= 0 && col < SIZE;
-   }
+    /* private void addSlidingMoves(List<int[]> moves, int row, int col, ChessPiece.Color color, int[][] ints) {
+     }*/
+    private boolean isInBounds(int row, int col) {
+        return row >= 0 && row < SIZE && col >= 0 && col < SIZE;
+    }
 
-   private void addSlidingMoves(List<int[]> moves, int row, int col, ChessPiece.Color color, int[][] directions) {
+    private void addSlidingMoves(List<int[]> moves, int row, int col, ChessPiece.Color color, int[][] directions) {
         for (int[] dir : directions) {
             int r = row + dir[0], c = col + dir[1];
             while (isInBounds(r, c)) {
@@ -342,7 +347,7 @@ public class GameController {
     }
 
     private void resetGame() {
-       gameEnded=false;
+        gameEnded=false;
         // Clear the board
         for (int row = 0; row < SIZE; row++) {
             for (int col = 0; col < SIZE; col++) {
@@ -361,7 +366,7 @@ public class GameController {
         // Setup fresh board
         setupPieces();         // put pieces in initial position
         updatePlayerTurn();    // update turn label
-       // int whiteTimeRemaining = 1 * 60;
+        // int whiteTimeRemaining = 1 * 60;
         //int blackTimeRemaining = 1 * 60;
         stopWhiteTimer();
         stopBlackTimer();
@@ -422,7 +427,7 @@ public class GameController {
         // Pawn movement (simplified)
 
         int dir = pieceColor == ChessPiece.Color.WHITE ? -1 : 1;
-         if (piece.getType() == ChessPiece.Type.PAWN) {
+        if (piece.getType() == ChessPiece.Type.PAWN) {
             if (fromCol == toCol && targetPiece == null) {
                 // Regular forward move (1 square)
                 return toRow == fromRow + dir ||
@@ -594,13 +599,13 @@ public class GameController {
 
 
 
-        /*private void showWinDialog(ChessPiece.Color winner) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Game Over");
-        alert.setHeaderText(null);
-        alert.setContentText(winner + " wins!");
-        alert.showAndWait();
-    }*/
+    /*private void showWinDialog(ChessPiece.Color winner) {
+    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+    alert.setTitle("Game Over");
+    alert.setHeaderText(null);
+    alert.setContentText(winner + " wins!");
+    alert.showAndWait();
+}*/
     private int whitePlayerId;
     private int blackPlayerId;
     public void setPlayerIds(int whiteId, int blackId) {
@@ -846,19 +851,10 @@ public class GameController {
     private int loggedInUserId;      // For returning to dashboard
     private String loggedInUsername;
 
-    public void setPlayers(String whitePlayer, String blackPlayer, int whitePlayerId, int blackPlayerId) {
-        this.whitePlayer = whitePlayer;
-        this.blackPlayer = blackPlayer;
-        this.whitePlayerId = whitePlayerId;
-        this.blackPlayerId = blackPlayerId;
-
-        //this.loggedInUserId = whitePlayerId; // assuming white is logged-in user
-       // this.loggedInUsername = whitePlayer;
-
+    public void setPlayers(String whitePlayer, String blackPlayer, int whiteId, int blackId) {
         whitePlayerLabel.setText("White: " + whitePlayer);
         blackPlayerLabel.setText("Black: " + blackPlayer);
-
-        updateTurnLabel();
+        this.opponentUsername = (whitePlayer.equals(loggedInUsername)) ? blackPlayer : whitePlayer;
     }
 
     private void updateTurnLabel() {
@@ -938,8 +934,8 @@ public class GameController {
 
     public void setSocketClient(SocketClient socketClient) {
         this.socketClient = socketClient;
-
-        socketClient.listener = new SocketClient.MessageListener() {
+        this.socketClient.setGameMoveListener(this::processOpponentMove); // <-- needed
+        socketClient.moveListener = new SocketClient.MessageListener() {
             @Override
             public void onChallengeReceived(String fromUser) {
                 // Not needed here in game screen
@@ -952,9 +948,23 @@ public class GameController {
 
             @Override
             public void onMoveReceived(String fromUser, String moveData) {
-                if (fromUser.equals(opponentUsername)) {
-                    Platform.runLater(() -> processOpponentMove(moveData));
-                }
+                Platform.runLater(() -> {
+                    String[] parts = moveData.split(",");
+                    int fromRow = Integer.parseInt(parts[0]);
+                    int fromCol = Integer.parseInt(parts[1]);
+                    int toRow = Integer.parseInt(parts[2]);
+                    int toCol = Integer.parseInt(parts[3]);
+
+                    // disable sendMove to avoid echo
+                    sendMove = false;
+                    movePiece(fromRow, fromCol, toRow, toCol, false);
+                    sendMove = true;
+                });
+            }
+
+            @Override
+            public void accept(String moveData) {
+
             }
         };
     }

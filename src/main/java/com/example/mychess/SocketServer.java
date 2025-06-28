@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SocketServer {
     private static final int PORT = 5555;
 
-    // Map username -> ClientHandler
+    // Map username-clientHandler
     private static final Map<String, ClientHandler> clients = new ConcurrentHashMap<>();
 
     public static void main(String[] args) throws IOException {
@@ -34,7 +34,7 @@ public class SocketServer {
     }
 
     static class ClientHandler extends Thread {
-        private Socket socket;
+        private final Socket socket;
         private PrintWriter out;
         private BufferedReader in;
         private String username;
@@ -65,12 +65,6 @@ public class SocketServer {
                         System.out.println("[Server] User logged in: " + username);
                         continue;
                     }
-
-                    // Message format examples:
-                    // CHALLENGE:fromUser:toUser
-                    // CHALLENGE_RESPONSE:fromUser:toUser:ACCEPT/DECLINE
-                    // MOVE:fromUser:toUser:fromRow,fromCol,toRow,toCol
-
                     String[] parts = inputLine.split(":", 4);
                     if (parts.length < 3) {
                         System.out.println("[Server] Invalid message format: " + inputLine);
