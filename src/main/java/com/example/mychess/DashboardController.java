@@ -24,6 +24,8 @@ public class DashboardController {
     private SocketClient socketClient;
     private int whitePlayerId;
     private int blackPlayerId;
+    //public boolean gameControllerRef;
+    private GameController gameControllerRef;
 
     @FXML private Label welcomeLabel;
     @FXML private Label statsLabel;
@@ -54,7 +56,7 @@ public class DashboardController {
                     public void onChallengeResponse(String fromUser, String response) {
                         Platform.runLater(() -> {
                             if ("ACCEPT".equalsIgnoreCase(response)) {
-                                openGameWindow(loggedInUsername, fromUser);
+                                openGameWindow(loggedInUsername, fromUser); // Challenger side
                             } else {
                                 new Alert(Alert.AlertType.INFORMATION, fromUser + " declined your challenge.").show();
                             }
@@ -63,11 +65,18 @@ public class DashboardController {
 
                     @Override
                     public void onMoveReceived(String fromUser, String moveData) {
-                        // You can handle game moves in GameController
+                        if (gameControllerRef != null) {
+                            System.out.println("[GameController] onMoveReceived from " + fromUser + ": " + moveData);
+
+                            Platform.runLater(() -> gameControllerRef.processOpponentMove(moveData));
+                        } else {
+                            System.err.println("No active gameControllerRef to deliver move");
+                        }
+
                     }
 
                     @Override
-                    public void accept(String moveData) {
+                    public void onStartGame(String opponentUsername) {
 
                     }
                 });
@@ -127,22 +136,35 @@ public class DashboardController {
 
         alert.showAndWait().ifPresent(response -> {
             if (response == acceptButton) {
-                socketClient.sendMessage("CHALLENGE_ACCEPTED:" + challenger);
-                openGameWindow(challenger, loggedInUsername); // challenger is white, you black
+                socketClient.sendMessage("CHALLENGE_RESPONSE:" + loggedInUsername + ":" + challenger + ":ACCEPT");
+
+                // ✅ THIS IS THE MISSING PIECE
+                openGameWindow(challenger, loggedInUsername); // White = challenger, You = black
+
             } else {
-                socketClient.sendMessage("CHALLENGE_DECLINED:" + challenger);
+                socketClient.sendMessage("CHALLENGE_RESPONSE:" + loggedInUsername + ":" + challenger + ":DECLINE");
             }
         });
     }
 
+
     private void openGameWindow(String whitePlayer, String blackPlayer) {
         try {
+            int whiteId = getPlayerIdByUsername(whitePlayer);
+            int blackId = getPlayerIdByUsername(blackPlayer);
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/game_view.fxml"));
             Parent root = loader.load();
             GameController controller = loader.getController();
-
-            controller.setPlayers(whitePlayer, blackPlayer, -1, -1);
+            gameControllerRef = controller;
             controller.setSocketClient(socketClient);
+
+            controller.setPlayers(whitePlayer, blackPlayer, whiteId, blackId);
+            if (loggedInUsername.equals(whitePlayer)) {
+                controller.setOpponentUsername(blackPlayer);
+            } else {
+                controller.setOpponentUsername(whitePlayer);
+            }
+            System.out.println("[Dashboard] gameControllerRef set for " + whitePlayer + " vs " + blackPlayer);
 
             Stage stage = new Stage();
             stage.setScene(new Scene(root, 900, 800));
@@ -154,20 +176,23 @@ public class DashboardController {
         }
     }
 
-
-
-
-
-
-
-
-
-
+    private int getPlayerIdByUsername(String username) {
+        try (Connection conn = DBUtil.getConnection()) {
+            String sql = "SELECT id FROM players WHERE username = ?";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("id");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return -1; // fail-safe
+    }
 
 
     //new
-
-
     private void loadStats() {
         try (Connection conn = DBUtil.getConnection()) {
             String sql = "SELECT wins, losses, category FROM players WHERE id = ?";
@@ -209,7 +234,7 @@ public class DashboardController {
     }
 
     @FXML
-    private void onSendRequestClick() {
+    private void  onSendRequestClick() {
 
         String selectedPlayer = playersListView.getSelectionModel().getSelectedItem();
         if (selectedPlayer == null) {
@@ -229,26 +254,16 @@ public class DashboardController {
 
             if (rs.next()) {
                 int receiverId = rs.getInt("id");
+                String receiverUsername=rs.getString("name");
 
                 // Insert game request
-                String insert = "INSERT INTO game_requests (sender_id, receiver_id) VALUES (?, ?)";
+                String insert = "INSERT INTO game_requests (sender_id, receiver_id,receiverUsername) VALUES (?, ?)";
                 PreparedStatement ins = conn.prepareStatement(insert);
                 ins.setInt(1, loggedInUserId);
                 ins.setInt(2, receiverId);
                 ins.executeUpdate();
 
-                // Directly launch game for testing/demo purpose
-               // FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/game_view.fxml"));
-               // Parent root = loader.load();
-               // GameController controller = loader.getController();
-                //String logedInUsername = loggedInUsername;
-                //controller.setPlayers(loggedInUsername, selectedPlayer, loggedInUserId, receiverId);
-                //controller.setPlayerIds(whitePlayerId, blackPlayerId);
 
-                //Stage stage = (Stage) playersListView.getScene().getWindow();
-               // stage.setScene(new Scene(root, 900, 800));
-               // stage.setTitle("Chess Game");
-                //stage.show();
 
             }
         } catch (Exception e) {

@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SocketServer {
     private static final int PORT = 5555;
 
-    // Map username-clientHandler
+    // Map username -> ClientHandler
     private static final Map<String, ClientHandler> clients = new ConcurrentHashMap<>();
 
     public static void main(String[] args) throws IOException {
@@ -34,7 +34,7 @@ public class SocketServer {
     }
 
     static class ClientHandler extends Thread {
-        private final Socket socket;
+        private Socket socket;
         private PrintWriter out;
         private BufferedReader in;
         private String username;
@@ -65,6 +65,12 @@ public class SocketServer {
                         System.out.println("[Server] User logged in: " + username);
                         continue;
                     }
+
+                    // Message format examples:
+                    // CHALLENGE:fromUser:toUser
+                    // CHALLENGE_RESPONSE:fromUser:toUser:ACCEPT/DECLINE
+                    // MOVE:fromUser:toUser:fromRow,fromCol,toRow,toCol
+
                     String[] parts = inputLine.split(":", 4);
                     if (parts.length < 3) {
                         System.out.println("[Server] Invalid message format: " + inputLine);
@@ -82,13 +88,14 @@ public class SocketServer {
                             break;
 
                         case "CHALLENGE_RESPONSE":
-                            if (parts.length < 4) {
-                                System.out.println("[Server] Invalid CHALLENGE_RESPONSE: " + inputLine);
-                                break;
-                            }
                             String response = parts[3]; // ACCEPT or DECLINE
-                            // Send response back to challenger
                             sendToUser(toUser, "CHALLENGE_RESULT:" + fromUser + ":" + response);
+
+                            // ✅ If accepted, notify both players to open the game board
+                            if ("ACCEPT".equalsIgnoreCase(response)) {
+                                sendToUser(fromUser, "START_GAME:" + toUser); // Notify sender
+                                sendToUser(toUser, "START_GAME:" + fromUser); // Notify receiver
+                            }
                             break;
 
                         case "MOVE":
@@ -97,7 +104,6 @@ public class SocketServer {
                                 break;
                             }
                             String moveData = parts[3]; // fromRow,fromCol,toRow,toCol
-                            // Forward move to opponent
                             sendToUser(toUser, "MOVE_FROM:" + fromUser + ":" + moveData);
                             break;
 

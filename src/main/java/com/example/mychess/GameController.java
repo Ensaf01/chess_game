@@ -1,3 +1,5 @@
+//gamecontroller
+
 package com.example.mychess;
 
 import javafx.application.Platform;
@@ -74,11 +76,6 @@ public class GameController {
 
     }
 
-    private java.util.function.Consumer<String> moveListener;
-
-    public void setGameMoveListener(java.util.function.Consumer<String> listener) {
-        this.moveListener = listener;
-    }
 
 
     // Black pieces here
@@ -148,15 +145,13 @@ public class GameController {
 
 
 
-    private void movePiece(int fromRow, int fromCol, int toRow, int toCol, boolean b) {
+    private void movePiece(int fromRow, int fromCol, int toRow, int toCol, boolean sendMove) {
         ChessPiece movingPiece = boardPieces[fromRow][fromCol];
         ChessPiece targetPiece = boardPieces[toRow][toCol];
 
-        // Prevent capturing own piece or king
         if (targetPiece != null && targetPiece.getColor() == movingPiece.getColor()) return;
         if (targetPiece != null && targetPiece.getType() == ChessPiece.Type.KING) return;
 
-        // Move the piece
         boardPieces[toRow][toCol] = movingPiece;
         boardPieces[fromRow][fromCol] = null;
 
@@ -171,24 +166,32 @@ public class GameController {
 
         isWhiteTurn = !isWhiteTurn;
         updatePlayerTurn();
-        drawBoard();
 
+        // ✅ Always redraw board after any move (local or opponent)
+        drawBoard();
+        System.out.println("[GameController] Board updated after opponent move.");
+
+
+        // ✅ Only send move if this is a local (manual) move
         if (sendMove) {
+            System.out.println("[GameController] Sending move: " + fromRow+","+fromCol+" → "+toRow+","+toCol);
             sendMoveToOpponent(fromRow, fromCol, toRow, toCol);
         }
 
-        // Single check for both king capture or checkmate
+        // Game over checks (optional)
         ChessPiece.Color currentPlayer = isWhiteTurn ? ChessPiece.Color.WHITE : ChessPiece.Color.BLACK;
-
         if (isKingCaptured() || (isKingInCheck(currentPlayer) && !hasAnyValidMove(currentPlayer))) {
             if (gameEnded) return;
             gameEnded = true;
             ChessPiece.Color winner = isWhiteTurn ? ChessPiece.Color.BLACK : ChessPiece.Color.WHITE;
-            updatePlayerStats(winner);  // Update stats only once
+            if (sendMove) {
+                updatePlayerStats(winner); // ✅ Only trigger DB update once
+            }
+            //updatePlayerStats(winner);
             showWinDialog(winner);
         }
-
     }
+
 
     /*private void sendMoveToOpponent(int fromRow, int fromCol, int toRow, int toCol) {
         if (socketClient != null) {
@@ -387,7 +390,7 @@ public class GameController {
         // Try to move the selected piece
         else if (selectedRow != -1) {
             if (isValidMove(selectedRow, selectedCol, row, col)) {
-                movePiece(selectedRow, selectedCol, row, col, false);
+                movePiece(selectedRow, selectedCol, row, col, true);
             }
             // Clear selection
             boardSquares[selectedRow][selectedCol].setStyle("");
@@ -629,12 +632,31 @@ public class GameController {
 
         alert.showAndWait().ifPresent(response -> {
             if (response == playAgainBtn) {
-                resetGame(); // Your reset logic
+                resetGame();
+                sendPlayAgainRequest();
+
+               /* if (socketClient != null && opponentUsername != null) {
+                    socketClient.sendMessage("CHALLENGE:" + loggedInUsername + ":" + opponentUsername);
+                    Alert wait = new Alert(Alert.AlertType.INFORMATION, "Rematch challenge sent to " + opponentUsername + ". Waiting for response...");
+                    wait.show();
+                }*/
+                 // Your reset logic
             } else if (response == dashboardBtn) {
                 goToDashboard();
             }
         });
     }
+
+    private void sendPlayAgainRequest() {
+        if (socketClient != null && opponentUsername != null) {
+            socketClient.sendMessage("CHALLENGE:" + loggedInUsername + ":" + opponentUsername);
+            System.out.println("[GameController] Sent play again request to " + opponentUsername);
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Waiting for " + opponentUsername + " to accept rematch...");
+            alert.show();
+        }
+    }
+
 
     private void goToDashboard() {
         try {
@@ -655,20 +677,23 @@ public class GameController {
 
 
 
-
     private void updatePlayerStats(ChessPiece.Color winnerColor) {
-        try (Connection conn = DBUtil.getConnection()) {
+        try (Connection conn = DBUtil.getConnection()){
             int winnerId = (winnerColor == ChessPiece.Color.WHITE) ? whitePlayerId : blackPlayerId;
             int loserId = (winnerColor == ChessPiece.Color.WHITE) ? blackPlayerId : whitePlayerId;
 
-            // Don't update if winner or loser is AI
-            if (winnerId == -1 || loserId == -1) return;
+            // Don't update if winner or loser is AI or unset
+            if (winnerId == -1 || loserId == -1) {
+                System.out.println("Invalid player IDs, skipping update.");
+                return;
+            }
 
             // Update win
             try (PreparedStatement winStmt = conn.prepareStatement(
                     "UPDATE players SET wins = wins + 1 WHERE id = ?")) {
                 winStmt.setInt(1, winnerId);
                 winStmt.executeUpdate();
+                System.out.println("Updated wins for player ID: " + winnerId);
             }
 
             // Update loss
@@ -676,22 +701,30 @@ public class GameController {
                     "UPDATE players SET losses = losses + 1 WHERE id = ?")) {
                 loseStmt.setInt(1, loserId);
                 loseStmt.executeUpdate();
+                System.out.println("Updated losses for player ID: " + loserId);
             }
 
-            System.out.println("Player stats updated.");
-            System.out.println("Updating stats: Winner ID = " + winnerId + ", Loser ID = " + loserId);
+            // Insert match result into matches table
+            try (PreparedStatement insertMatch = conn.prepareStatement(
+                    "INSERT INTO matches (player1_id, player2_id, winner_id, match_date) VALUES (?, ?, ?, NOW())")) {
+                insertMatch.setInt(1, whitePlayerId);
+                insertMatch.setInt(2, blackPlayerId);
+                insertMatch.setInt(3, winnerId);
+                insertMatch.executeUpdate();
+                System.out.println("Match inserted into 'matches' table.");
+            }
 
-            // Existing logic
+            // Update player category & rankings
             updatePlayerCategory(conn, winnerId);
             updatePlayerCategory(conn, loserId);
-
-            // ✅ New line for ranking
             updatePlayerRankTitles();
 
         } catch (Exception e) {
             e.printStackTrace();
+            System.err.println("❌ Failed to update player stats.");
         }
     }
+
 
     private void updatePlayerRankTitles() {
         try (Connection conn = DBUtil.getConnection()) {
@@ -851,10 +884,19 @@ public class GameController {
     private int loggedInUserId;      // For returning to dashboard
     private String loggedInUsername;
 
-    public void setPlayers(String whitePlayer, String blackPlayer, int whiteId, int blackId) {
+    public void setPlayers(String whitePlayer, String blackPlayer, int whitePlayerId, int blackPlayerId) {
+        this.whitePlayer = whitePlayer;
+        this.blackPlayer = blackPlayer;
+        this.whitePlayerId = whitePlayerId;
+        this.blackPlayerId = blackPlayerId;
+
+        //this.loggedInUserId = whitePlayerId; // assuming white is logged-in user
+        // this.loggedInUsername = whitePlayer;
+
         whitePlayerLabel.setText("White: " + whitePlayer);
         blackPlayerLabel.setText("Black: " + blackPlayer);
-        this.opponentUsername = (whitePlayer.equals(loggedInUsername)) ? blackPlayer : whitePlayer;
+
+        updateTurnLabel();
     }
 
     private void updateTurnLabel() {
@@ -934,8 +976,8 @@ public class GameController {
 
     public void setSocketClient(SocketClient socketClient) {
         this.socketClient = socketClient;
-        this.socketClient.setGameMoveListener(this::processOpponentMove); // <-- needed
-        socketClient.moveListener = new SocketClient.MessageListener() {
+
+        socketClient.addListener(new SocketClient.MessageListener() {
             @Override
             public void onChallengeReceived(String fromUser) {
                 // Not needed here in game screen
@@ -948,28 +990,22 @@ public class GameController {
 
             @Override
             public void onMoveReceived(String fromUser, String moveData) {
-                Platform.runLater(() -> {
-                    String[] parts = moveData.split(",");
-                    int fromRow = Integer.parseInt(parts[0]);
-                    int fromCol = Integer.parseInt(parts[1]);
-                    int toRow = Integer.parseInt(parts[2]);
-                    int toCol = Integer.parseInt(parts[3]);
+                System.out.println("Received move from " + fromUser + ": " + moveData);
+                if (fromUser.equals(opponentUsername)) {
 
-                    // disable sendMove to avoid echo
-                    sendMove = false;
-                    movePiece(fromRow, fromCol, toRow, toCol, false);
-                    sendMove = true;
-                });
+                    Platform.runLater(() -> processOpponentMove(moveData));
+                }
             }
 
             @Override
-            public void accept(String moveData) {
+            public void onStartGame(String opponentUsername) {
 
             }
-        };
+
+        });
     }
 
-    private void processOpponentMove(String moveData) {
+    void processOpponentMove(String moveData) {
         // Example moveData format: "fromRow,fromCol,toRow,toCol"
         String[] parts = moveData.split(",");
         if (parts.length != 4) {
@@ -984,7 +1020,8 @@ public class GameController {
 
             // Now apply this move to your game board
             // For example, call your existing move logic method:
-            makeMove(fromRow, fromCol, toRow, toCol);
+            System.out.println("[GameController] Opponent move data: " + moveData);
+            movePiece(fromRow, fromCol, toRow, toCol,false);
 
         } catch (NumberFormatException e) {
             e.printStackTrace();
@@ -1000,8 +1037,10 @@ public class GameController {
 
     private void sendMoveToOpponent(int fromRow, int fromCol, int toRow, int toCol) {
         if (socketClient != null && opponentUsername != null) {
+
             String moveStr = fromRow + "," + fromCol + "," + toRow + "," + toCol;
             socketClient.sendMessage("MOVE:" + loggedInUsername + ":" + opponentUsername + ":" + moveStr);
+            System.out.println("[GameController] sendMoveToOpponent: MOVE:" + loggedInUsername + ":" + opponentUsername + ":" + moveStr);
         }
     }
 
@@ -1021,6 +1060,12 @@ public class GameController {
                 movePiece(fromRow, fromCol, toRow, toCol, false);
             }
         });
+    }
+
+   // private String opponentUsername;
+
+    public void setOpponentUsername(String username) {
+        this.opponentUsername = username;
     }
 
 
