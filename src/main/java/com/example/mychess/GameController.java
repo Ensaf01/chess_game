@@ -54,6 +54,8 @@ public class GameController {
     private volatile boolean whiteTimerRunning = false;
     private volatile boolean blackTimerRunning = false;
     private boolean gameEnded=false;
+    private boolean isFlipped = false;
+
     private boolean sendMove=false;
 
 
@@ -87,35 +89,30 @@ public class GameController {
 
     // Black pieces here
     private void setupPieces() {
-
-        boardPieces[0] = new ChessPiece[]{
-                new ChessPiece(ChessPiece.Type.ROOK, ChessPiece.Color.BLACK),
-                new ChessPiece(ChessPiece.Type.KNIGHT, ChessPiece.Color.BLACK),
-                new ChessPiece(ChessPiece.Type.BISHOP, ChessPiece.Color.BLACK),
-                new ChessPiece(ChessPiece.Type.QUEEN, ChessPiece.Color.BLACK),
-                new ChessPiece(ChessPiece.Type.KING, ChessPiece.Color.BLACK),
-                new ChessPiece(ChessPiece.Type.BISHOP, ChessPiece.Color.BLACK),
-                new ChessPiece(ChessPiece.Type.KNIGHT, ChessPiece.Color.BLACK),
-                new ChessPiece(ChessPiece.Type.ROOK, ChessPiece.Color.BLACK)
-        };
-        for (int i = 0; i < SIZE; i++) {
-
-            boardPieces[1][i] = new ChessPiece(ChessPiece.Type.PAWN, ChessPiece.Color.BLACK);
+        // Set up white pieces
+        boardPieces[7][0] = new ChessPiece(ChessPiece.Type.ROOK, ChessPiece.Color.WHITE);
+        boardPieces[7][1] = new ChessPiece(ChessPiece.Type.KNIGHT, ChessPiece.Color.WHITE);
+        boardPieces[7][2] = new ChessPiece(ChessPiece.Type.BISHOP, ChessPiece.Color.WHITE);
+        boardPieces[7][3] = new ChessPiece(ChessPiece.Type.QUEEN, ChessPiece.Color.WHITE);
+        boardPieces[7][4] = new ChessPiece(ChessPiece.Type.KING, ChessPiece.Color.WHITE);
+        boardPieces[7][5] = new ChessPiece(ChessPiece.Type.BISHOP, ChessPiece.Color.WHITE);
+        boardPieces[7][6] = new ChessPiece(ChessPiece.Type.KNIGHT, ChessPiece.Color.WHITE);
+        boardPieces[7][7] = new ChessPiece(ChessPiece.Type.ROOK, ChessPiece.Color.WHITE);
+        for (int col = 0; col < SIZE; col++) {
+            boardPieces[6][col] = new ChessPiece(ChessPiece.Type.PAWN, ChessPiece.Color.WHITE);
         }
 
-        // White pieces setup here
-        boardPieces[7] = new ChessPiece[]{
-                new ChessPiece(ChessPiece.Type.ROOK, ChessPiece.Color.WHITE),
-                new ChessPiece(ChessPiece.Type.KNIGHT, ChessPiece.Color.WHITE),
-                new ChessPiece(ChessPiece.Type.BISHOP, ChessPiece.Color.WHITE),
-                new ChessPiece(ChessPiece.Type.QUEEN, ChessPiece.Color.WHITE),
-                new ChessPiece(ChessPiece.Type.KING, ChessPiece.Color.WHITE),
-                new ChessPiece(ChessPiece.Type.BISHOP, ChessPiece.Color.WHITE),
-                new ChessPiece(ChessPiece.Type.KNIGHT, ChessPiece.Color.WHITE),
-                new ChessPiece(ChessPiece.Type.ROOK, ChessPiece.Color.WHITE)
-        };
-        for (int i = 0; i < SIZE; i++)
-        {boardPieces[6][i] = new ChessPiece(ChessPiece.Type.PAWN, ChessPiece.Color.WHITE);
+        // Set up black pieces
+        boardPieces[0][0] = new ChessPiece(ChessPiece.Type.ROOK, ChessPiece.Color.BLACK);
+        boardPieces[0][1] = new ChessPiece(ChessPiece.Type.KNIGHT, ChessPiece.Color.BLACK);
+        boardPieces[0][2] = new ChessPiece(ChessPiece.Type.BISHOP, ChessPiece.Color.BLACK);
+        boardPieces[0][3] = new ChessPiece(ChessPiece.Type.QUEEN, ChessPiece.Color.BLACK);
+        boardPieces[0][4] = new ChessPiece(ChessPiece.Type.KING, ChessPiece.Color.BLACK);
+        boardPieces[0][5] = new ChessPiece(ChessPiece.Type.BISHOP, ChessPiece.Color.BLACK);
+        boardPieces[0][6] = new ChessPiece(ChessPiece.Type.KNIGHT, ChessPiece.Color.BLACK);
+        boardPieces[0][7] = new ChessPiece(ChessPiece.Type.ROOK, ChessPiece.Color.BLACK);
+        for (int col = 0; col < SIZE; col++) {
+            boardPieces[1][col] = new ChessPiece(ChessPiece.Type.PAWN, ChessPiece.Color.BLACK);
         }
     }
 
@@ -123,9 +120,14 @@ public class GameController {
         chessBoard.getChildren().clear();
         for (int row = 0; row < SIZE; row++) {
             for (int col = 0; col < SIZE; col++) {
-                StackPane square = createSquare(row, col);
+                int displayRow = isFlipped ? SIZE - 1 - row : row;
+                int displayCol = isFlipped ? SIZE - 1 - col : col;
+
+                StackPane square = createSquare(row, col);  // row, col are still logic coords
+
                 boardSquares[row][col] = square;
-                chessBoard.add(square, col, row);
+
+                chessBoard.add(square, displayCol, displayRow);
             }
         }
     }
@@ -141,7 +143,13 @@ public class GameController {
         }
 
         StackPane square = new StackPane(tile, pieceText);
-        square.setOnMouseClicked(e -> handleClick(row, col));
+
+        // ✅ Adjust for flipped board view
+        square.setOnMouseClicked(e -> {
+            int realRow = isFlipped ? SIZE - 1 - row : row;
+            int realCol = isFlipped ? SIZE - 1 - col : col;
+            handleClick(realRow, realCol);
+        });
 
         return square;
     }
@@ -379,32 +387,32 @@ public class GameController {
     }
 
 
-
     private void handleClick(int row, int col) {
-        ChessPiece clicked = boardPieces[row][col];
+        int actualRow = isFlipped ? SIZE - 1 - row : row;
+        int actualCol = isFlipped ? SIZE - 1 - col : col;
+
+        ChessPiece clicked = boardPieces[actualRow][actualCol];
+
         if ((isWhiteTurn && localPlayerColor != ChessPiece.Color.WHITE) ||
                 (!isWhiteTurn && localPlayerColor != ChessPiece.Color.BLACK)) {
-            return; // Not your turn, so don't allow input
+            return; // Not your turn
         }
 
-        // Select a piece if no piece is selected and it's the correct player's turn
         if (selectedRow == -1 && clicked != null && clicked.getColor() == (isWhiteTurn ? ChessPiece.Color.WHITE : ChessPiece.Color.BLACK)) {
-            selectedRow = row;
-            selectedCol = col;
-            boardSquares[row][col].setStyle("-fx-border-color: red; -fx-border-width: 3;");
-        }
-        // Try to move the selected piece
-        else if (selectedRow != -1) {
-            if (isValidMove(selectedRow, selectedCol, row, col)) {
-                movePiece(selectedRow, selectedCol, row, col, true);
+            selectedRow = actualRow;
+            selectedCol = actualCol;
+            boardSquares[actualRow][actualCol].setStyle("-fx-border-color: red; -fx-border-width: 3;");
+        } else if (selectedRow != -1) {
+            if (isValidMove(selectedRow, selectedCol, actualRow, actualCol)) {
+                movePiece(selectedRow, selectedCol, actualRow, actualCol, true);
             }
-            // Clear selection
             boardSquares[selectedRow][selectedCol].setStyle("");
             selectedRow = -1;
             selectedCol = -1;
             drawBoard();
         }
     }
+
 
 
 
@@ -900,16 +908,20 @@ public class GameController {
 
         if (loggedInUsername.equals(whitePlayer)) {
             localPlayerColor = ChessPiece.Color.WHITE;
+            isFlipped = false;
         } else {
             localPlayerColor = ChessPiece.Color.BLACK;
+            isFlipped = true;
         }
-        //this.loggedInUserId = whitePlayerId; // assuming white is logged-in user
-        // this.loggedInUsername = whitePlayer;
 
         whitePlayerLabel.setText("White: " + whitePlayer);
-       blackPlayerLabel.setText("Black: " + blackPlayer);
-
+        blackPlayerLabel.setText("Black: " + blackPlayer);
         updateTurnLabel();
+
+        // 🧠 Setup the board only after knowing the player color
+        setupPieces();
+        drawBoard();
+
     }
 
     private void updateTurnLabel() {
