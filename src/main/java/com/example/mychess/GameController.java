@@ -2,9 +2,11 @@
 
 package com.example.mychess;
 
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.ButtonType;
@@ -17,6 +19,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.control.Alert;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -37,12 +40,16 @@ public class GameController {
 
     @FXML
     private Label playerTurnLabel;
+    @FXML
+    private Label boardOwnerLabel;
 
     private int whiteTime = 60; // 1 minute
     private int blackTime = 60;
 
     private Thread whiteTimerThread;
     private Thread blackTimerThread;
+    private ChessPiece.Color localPlayerColor;
+
 
     private volatile boolean whiteTimerRunning = false;
     private volatile boolean blackTimerRunning = false;
@@ -166,13 +173,8 @@ public class GameController {
 
         isWhiteTurn = !isWhiteTurn;
         updatePlayerTurn();
-
-        // ✅ Always redraw board after any move (local or opponent)
         drawBoard();
         System.out.println("[GameController] Board updated after opponent move.");
-
-
-        // ✅ Only send move if this is a local (manual) move
         if (sendMove) {
             System.out.println("[GameController] Sending move: " + fromRow+","+fromCol+" → "+toRow+","+toCol);
             sendMoveToOpponent(fromRow, fromCol, toRow, toCol);
@@ -380,6 +382,10 @@ public class GameController {
 
     private void handleClick(int row, int col) {
         ChessPiece clicked = boardPieces[row][col];
+        if ((isWhiteTurn && localPlayerColor != ChessPiece.Color.WHITE) ||
+                (!isWhiteTurn && localPlayerColor != ChessPiece.Color.BLACK)) {
+            return; // Not your turn, so don't allow input
+        }
 
         // Select a piece if no piece is selected and it's the correct player's turn
         if (selectedRow == -1 && clicked != null && clicked.getColor() == (isWhiteTurn ? ChessPiece.Color.WHITE : ChessPiece.Color.BLACK)) {
@@ -617,35 +623,29 @@ public class GameController {
     }
 
     private void showWinDialog(ChessPiece.Color winner) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Game Over");
         alert.setHeaderText("Game Ended");
-        alert.setContentText(
-                winner == ChessPiece.Color.WHITE ?
-                        "White wins the game!" :
-                        "Black wins the game!"
-        );
+        alert.setContentText(winner == ChessPiece.Color.WHITE ? "White wins!" : "Black wins!");
 
-        ButtonType playAgainBtn = new ButtonType("Play Again");
-        ButtonType dashboardBtn = new ButtonType("Dashboard");
-        alert.getButtonTypes().setAll(playAgainBtn, dashboardBtn);
+        alert.getButtonTypes().setAll(ButtonType.OK);
 
         alert.showAndWait().ifPresent(response -> {
-            if (response == playAgainBtn) {
-                resetGame();
-                sendPlayAgainRequest();
-
-               /* if (socketClient != null && opponentUsername != null) {
-                    socketClient.sendMessage("CHALLENGE:" + loggedInUsername + ":" + opponentUsername);
-                    Alert wait = new Alert(Alert.AlertType.INFORMATION, "Rematch challenge sent to " + opponentUsername + ". Waiting for response...");
-                    wait.show();
-                }*/
-                 // Your reset logic
-            } else if (response == dashboardBtn) {
-                goToDashboard();
-            }
+            closeGameWindow();  // ✅ Close only the game window
         });
     }
+
+    private void closeGameWindow() {
+        Stage stage = (Stage) chessBoard.getScene().getWindow();
+        stage.close(); // close the game window
+
+        if (dashboardController != null) {
+            dashboardController.refreshDashboard(); // ✅ reload stats & player list
+        }
+    }
+
+
+
 
     private void sendPlayAgainRequest() {
         if (socketClient != null && opponentUsername != null) {
@@ -656,22 +656,17 @@ public class GameController {
             alert.show();
         }
     }
-
-
     private void goToDashboard() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/mychess/dashboard.fxml"));
-            Parent root = loader.load();
-
-            DashboardController controller = loader.getController();
-            controller.initializeUser(loggedInUserId, loggedInUsername);
-
+        if (dashboardController != null) {
+            // Get current stage
             Stage stage = (Stage) chessBoard.getScene().getWindow();
-            stage.setScene(new Scene(root));
-            stage.setTitle("Dashboard");
-            stage.show();
-        } catch (IOException e) {
-            e.printStackTrace();
+
+            // Reuse the already-loaded dashboard scene
+            Parent dashboardRoot = dashboardController.welcomeLabel.getScene().getRoot(); // Reuse scene
+            stage.setScene(new Scene(dashboardRoot));
+            stage.setTitle("Player Dashboard");
+        } else {
+            System.err.println("⚠ Dashboard controller is null. Cannot return.");
         }
     }
 
@@ -883,18 +878,36 @@ public class GameController {
 
     private int loggedInUserId;      // For returning to dashboard
     private String loggedInUsername;
+    public void setLoggedInUsername(String username) {
+        this.loggedInUsername = username;
+        if (boardOwnerLabel != null) {
+            String role = username.equals(whitePlayer) ? "White" : "Black";
+            String color = role.equals("White") ? "green" : "blue";
+            boardOwnerLabel.setText("This board belongs to: " + username + " (" + role + ")");
+            boardOwnerLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
+        }
+
+    }
 
     public void setPlayers(String whitePlayer, String blackPlayer, int whitePlayerId, int blackPlayerId) {
         this.whitePlayer = whitePlayer;
         this.blackPlayer = blackPlayer;
         this.whitePlayerId = whitePlayerId;
         this.blackPlayerId = blackPlayerId;
+        if (loggedInUsername != null) {
+            boardOwnerLabel.setText("B:" + loggedInUsername);
+        }
 
+        if (loggedInUsername.equals(whitePlayer)) {
+            localPlayerColor = ChessPiece.Color.WHITE;
+        } else {
+            localPlayerColor = ChessPiece.Color.BLACK;
+        }
         //this.loggedInUserId = whitePlayerId; // assuming white is logged-in user
         // this.loggedInUsername = whitePlayer;
 
         whitePlayerLabel.setText("White: " + whitePlayer);
-        blackPlayerLabel.setText("Black: " + blackPlayer);
+       blackPlayerLabel.setText("Black: " + blackPlayer);
 
         updateTurnLabel();
     }
@@ -922,22 +935,16 @@ public class GameController {
 
         updatePlayerStats(winnerColor);  // ✅ update once
 
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Time Up");
         alert.setHeaderText("Time is up!");
         alert.setContentText(winnerName + " wins due to timeout!");
-
-        ButtonType playAgainBtn = new ButtonType("Play Again");
-        ButtonType dashboardBtn = new ButtonType("Dashboard");
-        alert.getButtonTypes().setAll(playAgainBtn, dashboardBtn);
+        alert.getButtonTypes().setAll(ButtonType.OK);
 
         alert.showAndWait().ifPresent(response -> {
-            if (response == playAgainBtn) {
-                resetGame();
-            } else {
-                goToDashboard();
-            }
+            closeGameWindow(); // ✅
         });
+
     }
 
 
@@ -1066,6 +1073,12 @@ public class GameController {
 
     public void setOpponentUsername(String username) {
         this.opponentUsername = username;
+    }
+
+    private DashboardController dashboardController;
+
+    public void setDashboardController(DashboardController dashboardController) {
+        this.dashboardController = dashboardController;
     }
 
 

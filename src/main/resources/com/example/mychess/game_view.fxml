@@ -22,6 +22,13 @@
             <Label fx:id="whitePlayerLabel" style="-fx-font-size: 16px; -fx-text-fill: #34495e;" text="White: 01:00" />
             <Label fx:id="blackPlayerLabel" style="-fx-font-size: 16px; -fx-text-fill: #34495e;" text="Black: 01:00" />
             <Label fx:id="playerTurnLabel" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="White's turn" />
+            <Label fx:id="boardOwnerLabel"
+                   text="Belong:"
+                   alignment="CENTER"
+                   maxWidth="Infinity"
+                   style="-fx-font-size: 18px; -fx-font-weight: bold;" />
+
+
         </VBox>
     </left>
 

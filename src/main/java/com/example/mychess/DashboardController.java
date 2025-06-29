@@ -27,7 +27,8 @@ public class DashboardController {
     //public boolean gameControllerRef;
     private GameController gameControllerRef;
 
-    @FXML private Label welcomeLabel;
+    @FXML
+    Label welcomeLabel;
     @FXML private Label statsLabel;
     @FXML private ListView<String> playersListView;
 
@@ -157,8 +158,9 @@ public class DashboardController {
             GameController controller = loader.getController();
             gameControllerRef = controller;
             controller.setSocketClient(socketClient);
-
+            controller.setLoggedInUsername(loggedInUsername);
             controller.setPlayers(whitePlayer, blackPlayer, whiteId, blackId);
+            controller.setDashboardController(this);
             if (loggedInUsername.equals(whitePlayer)) {
                 controller.setOpponentUsername(blackPlayer);
             } else {
@@ -306,5 +308,10 @@ public class DashboardController {
         }
     }
 
+
+    public void refreshDashboard() {
+        loadStats();
+        loadOtherPlayers();
+    }
 
 }
