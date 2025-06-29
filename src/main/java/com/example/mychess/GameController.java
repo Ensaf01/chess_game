@@ -945,7 +945,10 @@ public class GameController {
 
         ChessPiece.Color winnerColor = winnerName.equals("White") ? ChessPiece.Color.WHITE : ChessPiece.Color.BLACK;
 
-        updatePlayerStats(winnerColor);  // ✅ update once
+        if ((winnerColor == ChessPiece.Color.WHITE && localPlayerColor == ChessPiece.Color.WHITE) ||
+                (winnerColor == ChessPiece.Color.BLACK && localPlayerColor == ChessPiece.Color.BLACK)) {
+            updatePlayerStats(winnerColor);  // ✅ update only ONCE
+        }
 
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Time Up");

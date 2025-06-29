@@ -50,6 +50,7 @@ public class DashboardController {
                 socketClient = new SocketClient("localhost", 5555, username, new SocketClient.MessageListener() {
                     @Override
                     public void onChallengeReceived(String fromUser) {
+
                         Platform.runLater(() -> showChallengeDialog(fromUser));
                     }
 
@@ -89,6 +90,10 @@ public class DashboardController {
         }).start();
     }
 
+
+
+
+
     @FXML
     private void onRefreshPlayersClick() {
         loadOtherPlayers();
@@ -103,10 +108,6 @@ public class DashboardController {
         // Runs in background thread, update UI on FX thread
         Platform.runLater(() -> {
             System.out.println("[Dashboard] Message received: " + message);
-            // Example message formats:
-            // CHALLENGE_REQUEST:<challengerUsername>
-            // CHALLENGE_ACCEPTED:<accepterUsername>
-            // CHALLENGE_DECLINED:<declinerUsername>
 
             if (message.startsWith("CHALLENGE_REQUEST:")) {
                 String challenger = message.substring("CHALLENGE_REQUEST:".length());
@@ -137,9 +138,11 @@ public class DashboardController {
 
         alert.showAndWait().ifPresent(response -> {
             if (response == acceptButton) {
+                DBUtil.markChallengeAccepted(challenger, loggedInUsername);
                 socketClient.sendMessage("CHALLENGE_RESPONSE:" + loggedInUsername + ":" + challenger + ":ACCEPT");
 
                 // ✅ THIS IS THE MISSING PIECE
+
                 openGameWindow(challenger, loggedInUsername); // White = challenger, You = black
 
             } else {
@@ -256,10 +259,10 @@ public class DashboardController {
 
             if (rs.next()) {
                 int receiverId = rs.getInt("id");
-                String receiverUsername=rs.getString("name");
+               // String receiverUsername=rs.getString("name");
 
                 // Insert game request
-                String insert = "INSERT INTO game_requests (sender_id, receiver_id,receiverUsername) VALUES (?, ?)";
+                String insert = "INSERT INTO game_requests (sender_id, receiver_id,status) VALUES (?, ?)";
                 PreparedStatement ins = conn.prepareStatement(insert);
                 ins.setInt(1, loggedInUserId);
                 ins.setInt(2, receiverId);
@@ -270,7 +273,7 @@ public class DashboardController {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            new Alert(Alert.AlertType.ERROR, "Failed to send request.").show();
+           // new Alert(Alert.AlertType.ERROR, "Failed to send request.").show();
         }
     }
 
