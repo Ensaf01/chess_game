@@ -52,6 +52,7 @@ public class DashboardController {
                     public void onChallengeReceived(String fromUser) {
 
                         Platform.runLater(() -> showChallengeDialog(fromUser));
+
                     }
 
                     @Override
@@ -59,6 +60,7 @@ public class DashboardController {
                         Platform.runLater(() -> {
                             if ("ACCEPT".equalsIgnoreCase(response)) {
                                 openGameWindow(loggedInUsername, fromUser); // Challenger side
+                                DBUtil.markChallengeAccepted(fromUser, loggedInUsername);
                             } else {
                                 new Alert(Alert.AlertType.INFORMATION, fromUser + " declined your challenge.").show();
                             }
@@ -81,6 +83,20 @@ public class DashboardController {
                     public void onStartGame(String opponentUsername) {
 
                     }
+                    @Override
+                    public void onPlayerNotAvailable(String opponentUsername){
+                        Platform.runLater(() -> {
+                            new Alert(Alert.AlertType.WARNING, opponentUsername + " is not available now. Please select another player.")
+                                    .showAndWait();
+                        });
+                    }
+                    @Override
+                    public void onChallengeAcknowledged(String opponentUsername) {
+                        Platform.runLater(() -> {
+                            new Alert(Alert.AlertType.INFORMATION, "Challenge sent to " + opponentUsername).show();
+                        });
+                    }
+
                 });
                 System.out.println("[Dashboard] Connected to socket server");
             } catch (IOException e) {
@@ -138,7 +154,7 @@ public class DashboardController {
 
         alert.showAndWait().ifPresent(response -> {
             if (response == acceptButton) {
-                DBUtil.markChallengeAccepted(challenger, loggedInUsername);
+                //DBUtil.markChallengeAccepted(challenger, loggedInUsername);
                 socketClient.sendMessage("CHALLENGE_RESPONSE:" + loggedInUsername + ":" + challenger + ":ACCEPT");
 
                 // ✅ THIS IS THE MISSING PIECE
@@ -243,7 +259,7 @@ public class DashboardController {
 
         String selectedPlayer = playersListView.getSelectionModel().getSelectedItem();
         if (selectedPlayer == null) {
-            new Alert(Alert.AlertType.WARNING, "Please select a player to challenge.").show();
+           // new Alert(Alert.AlertType.WARNING, "Please select a player to challenge.").show();
             return;
         }
         if (socketClient != null) {

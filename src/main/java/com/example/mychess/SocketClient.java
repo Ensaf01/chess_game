@@ -3,19 +3,15 @@ package com.example.mychess;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-
 public class SocketClient {
     private Socket socket;
     private PrintWriter out;
     private BufferedReader in;
-
     private final List<MessageListener> listeners = new ArrayList<>();
-
     public SocketClient(String host, int port, String username, MessageListener initialListener) throws IOException {
         if (initialListener != null) {
             listeners.add(initialListener);
         }
-
         socket = new Socket(host, port);
         out = new PrintWriter(socket.getOutputStream(), true);
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -33,16 +29,12 @@ public class SocketClient {
             }
         }).start();
     }
-
-
     public void sendMessage(String message) {
         out.println(message);
     }
-
     public void addListener(MessageListener listener) {
         listeners.add(listener);
     }
-
     private void handleServerMessage(String message) {
         if (message.startsWith("CHALLENGE_FROM:")) {
             String challenger = message.substring("CHALLENGE_FROM:".length());
@@ -76,17 +68,30 @@ public class SocketClient {
             for (MessageListener listener : listeners) {
                 listener.onStartGame(opponent); // ✅ Notify listeners
             }
+        }else if (message.startsWith("PLAYER_NOT_AVAILABLE:")) {
+            String unavailableUser  = message.substring("PLAYER_NOT_AVAILABLE:".length());
+            for (MessageListener listener : listeners) {
+                listener.onPlayerNotAvailable(unavailableUser  );
+            }
+        }
 
-        } else {
+        else if (message.startsWith("CHALLENGE_ACK:")) {
+            String opponent = message.substring("CHALLENGE_ACK:".length());
+            for (MessageListener listener : listeners) {
+                listener.onChallengeAcknowledged(opponent); // ✅ Add this method
+            }
+        } else
+        {
             System.out.println("[Client] Unknown message: " + message);
         }
     }
-
     public interface MessageListener {
         void onChallengeReceived(String fromUser);
         void onChallengeResponse(String fromUser, String response);
         void onMoveReceived(String fromUser, String moveData);
         void onStartGame(String opponentUsername);
+        void onPlayerNotAvailable(String opponentUsername);
 
+        void onChallengeAcknowledged(String opponent);
     }
 }

@@ -18,27 +18,26 @@ public class DBUtil {
     }
 
     public static void markChallengeAccepted(String senderUsername, String receiverUsername) {
-        try (Connection conn = DBUtil.getConnection()) {
-            String sql = """
-            UPDATE game_requests
-            SET status = 'accepted'
-            WHERE sender_id = (SELECT id FROM players WHERE username = ?)
-              AND receiver_id = (SELECT id FROM players WHERE username = ?)
-              AND status = 'pending'
+        String sql = """
+        UPDATE game_requests
+        SET status = 'accept'
+        WHERE sender_id = (SELECT id FROM players WHERE username = ?)
+          AND receiver_id = (SELECT id FROM players WHERE username = ?)
+          AND status = 'pending'
         """;
 
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setString(1, senderUsername);   // challenger = sender
-                stmt.setString(2, receiverUsername); // opponent = receiver
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, senderUsername);   // challenger
+            stmt.setString(2, receiverUsername); // accepting player
 
-                int rows = stmt.executeUpdate();
-                System.out.println("✅ markChallengeAccepted: updated rows = " + rows);
-            }
-
+            int rows = stmt.executeUpdate();
+            System.out.println("Challenge status updated: " + rows + " row(s).");
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
 
 
 

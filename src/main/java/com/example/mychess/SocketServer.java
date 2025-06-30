@@ -66,11 +66,6 @@ public class SocketServer {
                         continue;
                     }
 
-                    // Message format examples:
-                    // CHALLENGE:fromUser:toUser
-                    // CHALLENGE_RESPONSE:fromUser:toUser:ACCEPT/DECLINE
-                    // MOVE:fromUser:toUser:fromRow,fromCol,toRow,toCol
-
                     String[] parts = inputLine.split(":", 4);
                     if (parts.length < 3) {
                         System.out.println("[Server] Invalid message format: " + inputLine);
@@ -83,9 +78,15 @@ public class SocketServer {
 
                     switch (command) {
                         case "CHALLENGE":
-                            // Forward challenge to recipient
-                            sendToUser(toUser, "CHALLENGE_FROM:" + fromUser);
+                            ClientHandler opponentHandler  = clients.get(toUser);
+                            if (opponentHandler  != null) {
+                                sendToUser(toUser, "CHALLENGE_FROM:" + fromUser);
+                                sendToUser(fromUser, "CHALLENGE_ACK:" + toUser);
+                            } else {
+                                sendToUser(fromUser, "PLAYER_NOT_AVAILABLE:" + toUser);
+                            }
                             break;
+
 
                         case "CHALLENGE_RESPONSE":
                             String response = parts[3]; // ACCEPT or DECLINE

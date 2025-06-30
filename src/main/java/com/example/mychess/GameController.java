@@ -193,6 +193,7 @@ public class GameController {
         if (isKingCaptured() || (isKingInCheck(currentPlayer) && !hasAnyValidMove(currentPlayer))) {
             if (gameEnded) return;
             gameEnded = true;
+            chessBoard.setDisable(true);
             ChessPiece.Color winner = isWhiteTurn ? ChessPiece.Color.BLACK : ChessPiece.Color.WHITE;
             if (sendMove) {
                 updatePlayerStats(winner); // ✅ Only trigger DB update once
@@ -942,6 +943,7 @@ public class GameController {
 
         if (gameEnded) return;  // ✅ prevent double result
         gameEnded = true;
+        chessBoard.setDisable(true);
 
         ChessPiece.Color winnerColor = winnerName.equals("White") ? ChessPiece.Color.WHITE : ChessPiece.Color.BLACK;
 
@@ -1021,6 +1023,14 @@ public class GameController {
 
             @Override
             public void onStartGame(String opponentUsername) {
+
+            }
+            @Override
+            public void onPlayerNotAvailable(String opponentUsername){
+
+            }
+            @Override
+            public void onChallengeAcknowledged(String opponentUsername) {
 
             }
 
