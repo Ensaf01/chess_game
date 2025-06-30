@@ -814,9 +814,6 @@ public class GameController {
         }
     }
 
-
-
-
     private void updateTimerLabel(Label label, int timeLeft, String playerName) {
         int minutes = timeLeft / 60;
         int seconds = timeLeft % 60;
@@ -919,7 +916,7 @@ public class GameController {
         blackPlayerLabel.setText("Black: " + blackPlayer);
         updateTurnLabel();
 
-        // 🧠 Setup the board only after knowing the player color
+        // Setup the board only after knowing the player color
         setupPieces();
         drawBoard();
 

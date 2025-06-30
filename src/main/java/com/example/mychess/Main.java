@@ -15,7 +15,6 @@ public class Main extends Application {
         primaryStage.setResizable(false); // You can set true if you want resizable
         primaryStage.show();
     }
-
     public static void main(String[] args) {
         launch(args);
     }

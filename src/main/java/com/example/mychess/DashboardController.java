@@ -238,11 +238,13 @@ public class DashboardController {
         ObservableList<String> playerList = FXCollections.observableArrayList();
 
         try (Connection conn = DBUtil.getConnection()) {
-            String sql = "SELECT username FROM players WHERE id != ?";
+            String sql = "SELECT username,category FROM players WHERE id != ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, loggedInUserId);
                 ResultSet rs = stmt.executeQuery();
                 while (rs.next()) {
+                    String name = rs.getString("username");
+                    String category = rs.getString("category");
                     playerList.add(rs.getString("username"));
                 }
             }
